@@ -5,10 +5,10 @@ require_once __DIR__ . '/../config/validationHelper.php';
 
 header('Content-Type: application/json');
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+$method = $_SERVER['REQUEST_METHOD'];
 
-    // print_r([$_POST['backlink_url'], $_POST['campaign_base_url']]);
-    // die();
+if ($method === 'POST') {
+    // Add backlink
     $validator = new ValidationHelper($_POST);
     $validator
         ->required('campaign_id', 'Refresh the page and try again.')
@@ -31,10 +31,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $campaign_id = $_POST['campaign_id'];
     $target_url = $_POST['target_url'];
     $backlink_url = $_POST['backlink_url'];
-    $anchor_text = $validator->sanitize('anchor_text'); //$_POST['anchor_text'];
+    $anchor_text = $validator->sanitize('anchor_text');
     $created_by = $_SESSION['user_id'];
 
-    // Verify if the backlink_url matches the campaign's base_url pattern
     $stmt = $pdo->prepare("SELECT base_url FROM campaigns WHERE id = ?");
     $stmt->execute([$campaign_id]);
     $campaign = $stmt->fetch();
@@ -45,7 +44,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     try {
-
         $stmt = $pdo->prepare("INSERT INTO backlinks (campaign_id, target_url, backlink_url, anchor_text, created_by, status) VALUES (?, ?, ?, ?, ?, 'pending')");
         $stmt->execute([$campaign_id, $target_url, $backlink_url, $anchor_text, $created_by]);
 
@@ -54,12 +52,62 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $backlinksStmt->execute([$campaign_id]);
         $backlinks = $backlinksStmt->fetchAll(PDO::FETCH_ASSOC);
 
-        echo json_encode(['success' => true,  'message' => 'Backlink added successfully.', 'backlinks' => $backlinks]);
-        //echo json_encode(['success' => true, 'message' => 'Backlink added successfully.']);
+        echo json_encode(['success' => true, 'message' => 'Backlink added successfully.', 'backlinks' => $backlinks]);
     } catch (PDOException $e) {
         error_log("Database error: " . $e->getMessage());
-        echo json_encode(['success' => false, 'message' => 'We are experience a serivce outage. Please try again in a while or report to the support.']);
+        echo json_encode(['success' => false, 'message' => 'We are experiencing a service outage. Please try again later or report to support.']);
+    }
+} elseif ($method === 'DELETE') {
+    // Parse JSON input
+    $input = json_decode(file_get_contents('php://input'), true);
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        echo json_encode(['success' => false, 'message' => 'Invalid JSON input']);
+        exit;
+    }
+
+    // Validate input
+    $validator = new ValidationHelper($input);
+    $validator
+        //->required('ids', 'No backlinks selected for deletion')
+        //->array('ids', 'Invalid backlink selection format')
+        ->required('csrf_token', 'CSRF token is missing');
+
+    if (!$validator->passes()) {
+        $errors = $validator->getErrors();
+        echo json_encode(['success' => false, 'message' => 'Validation failed', 'errors' => $errors]);
+        exit;
+    }
+
+    // Verify CSRF token
+    if ($input['csrf_token'] !== $_SESSION['csrf_token']) {
+        echo json_encode(['success' => false, 'message' => 'CSRF token validation failed']);
+        exit;
+    }
+
+    $ids = $input['ids'];
+    if (!is_array($ids)) {
+        $ids = [$ids];
+    }
+
+    // Validate each ID
+    foreach ($ids as $id) {
+        if (!is_numeric($id)) {
+            echo json_encode(['success' => false, 'message' => 'Invalid backlink ID: ' . $id]);
+            exit;
+        }
+    }
+
+    try {
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $stmt = $pdo->prepare("DELETE FROM backlinks WHERE id IN ($placeholders)");
+        $stmt->execute($ids);
+
+        echo json_encode(['success' => true, 'message' => 'Backlink(s) deleted successfully']);
+    } catch (PDOException $e) {
+        error_log("Database error: " . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'Failed to delete backlink(s): ' . $e->getMessage()]);
     }
 } else {
     echo json_encode(['success' => false, 'message' => 'Invalid request method']);
 }
+exit;
