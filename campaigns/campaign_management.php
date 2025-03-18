@@ -1,16 +1,9 @@
 <?php
+
 // campaign_management.php
 require_once __DIR__ . '/../middleware.php';
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../config/constants.php';
-
-
-
-// Check if user is logged in and has access
-if ($_SESSION['role'] !== 'admin' && $_SESSION['role'] !== 'user') {
-    header("Location:" . BASE_URL . "login.php");
-    exit;
-}
 
 // Get campaigns with backlink counts
 $stmt = $pdo->query("
@@ -25,6 +18,7 @@ $stmt = $pdo->query("
     GROUP BY c.id
 ");
 $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
 ?>
 
 <!DOCTYPE html>
@@ -48,7 +42,7 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <div class="container-xl">
                     <div class="row g-2 align-items-center">
                         <div class="col">
-                            <h2 class="page-title">Campaign Management</h2>
+                            <h2 class="page-title">Campaign Manager</h2>
                         </div>
                         <div class="col-auto ms-auto">
                             <button class="btn btn-ghost-primary" data-bs-toggle="modal" data-bs-target="#add-campaign-modal">
@@ -315,31 +309,6 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 });
             });
 
-            /* Update Campaign
-            $(document).on('submit', '.update-campaign-form', function(e) {
-                e.preventDefault();
-                alert('form submit 1');
-                const campaignCard = $(this).closest('.col-md-6');
-                $.ajax({
-                    url: 'campaign_management_crud.php',
-                    type: 'POST',
-                    data: $(this).serialize(),
-                    dataType: 'json',
-                    success: function(response) {
-                        if (response.success) {
-                            // Update campaign card with new data
-                            updateCampaignCard(campaignCard, response.campaign);
-                            $('#edit-campaign-modal').modal('hide');
-                            alert(response.message);
-                        } else {
-                            alert(response.message);
-                        }
-                    },
-                    error: function() {
-                        alert('An error occurred while updating the campaign');
-                    }
-                });
-            });*/
 
             // Handle Edit button click
             $(document).on('click', '.edit-campaign-btn', function() {
