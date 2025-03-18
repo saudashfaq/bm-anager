@@ -15,7 +15,7 @@
             <?php if ($_SESSION['role'] === 'admin'): ?>
                 <a class="nav-item nav-link <?= ((basename($_SERVER['PHP_SELF']) == 'index.php' || basename($_SERVER['PHP_SELF']) == 'form.php') && strpos($_SERVER['REQUEST_URI'], 'users') !== false) ? 'active' : '' ?>" href="<?= BASE_URL ?>users/index.php">User Management</a>
             <?php endif; ?>
-            <a class="nav-item nav-link <?= (basename($_SERVER['PHP_SELF']) == 'proxy_setup.php') ? 'active' : '' ?>" href="<?= BASE_URL ?>proxy_setup.php">Proxy Management</a>
+            <a class="nav-item nav-link <?= (basename($_SERVER['PHP_SELF']) == 'proxymanager.php') ? 'active' : '' ?>" href="<?= BASE_URL ?>proxymanager.php">Proxy Management</a>
             <a class="nav-item nav-link <?= (basename($_SERVER['PHP_SELF']) == 'logout.php') ? 'active' : '' ?>" href="<?= BASE_URL ?>logout.php">Logout</a>
         </div>
     </div>
