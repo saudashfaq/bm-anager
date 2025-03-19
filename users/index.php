@@ -51,7 +51,14 @@ $users = $stmt->fetchAll();
                                         <td><?= $user['id'] ?></td>
                                         <td><?= htmlspecialchars($user['username']) ?></td>
                                         <td><?= htmlspecialchars($user['email']) ?></td>
-                                        <td><?= ucfirst($user['role']) ?></td>
+                                        <td>
+                                            <?php if ($user['role'] == 'admin'): ?>
+                                                <span class="status status-blue">Admin</span>
+                                            <?php else: ?>
+                                                <span class="status status-orange">User</span>
+                                            <?php endif; ?>
+
+                                        </td>
                                         <td>
                                             <a href="form.php?id=<?= $user['id'] ?>" class="btn btn-sm btn-warning">Edit</a>
                                             <a href="delete.php?id=<?= $user['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?')">Delete</a>

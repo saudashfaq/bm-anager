@@ -378,7 +378,7 @@ try {
                 const tbody = $('.table tbody').empty();
                 backlinks.forEach(function(bl) {
                     tbody.append(`
-                        <tr data-id="${escapeHtml(bl.id)}">
+                        <tr data-id="${escapeHtml(bl.id)}" >
                             <td><input type="checkbox" class="backlink-select" value="${escapeHtml(bl.id)}"></td>
                             <td>${escapeHtml(bl.backlink_url)}</td>
                             <td>${escapeHtml(bl.anchor_text)}</td>
@@ -386,7 +386,7 @@ try {
                             
                             
                             
-                            <td><span class="badge bg-${bl.status === 'alive' ? 'success' : bl.status === 'dead' ? 'danger' : 'warning'}">${escapeHtml(bl.status)}</span></td>
+                            <td><span class="status status-${bl.status === 'alive' ? 'success' : bl.status === 'dead' ? 'danger' : 'warning'}">${escapeHtml(bl.status)}</span></td>
                             
                             <td>${new Date(bl.created_at).toLocaleString()}</td>
                             <td>
