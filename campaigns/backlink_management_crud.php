@@ -14,13 +14,14 @@ if ($method === 'POST') {
         ->required('campaign_id', 'Refresh the page and try again.')
         ->integer('campaign_id', 'Refresh the page and try again.')
         ->numeric('campaign_id', 'Refresh the page and try again.')
-        ->required('target_url', 'Target URL is required, where you hosted your website link.')
-        ->url('target_url', 'Target URL format is incorrect')
-        ->required('backlink_url', 'Backlink URL is required.')
+        ->url('target_url', 'Target URL format is incorrect') //Your website link if provided 
+        ->required('backlink_url', 'Backlink URL of the site that contains refrence link of your website')
         ->url('backlink_url', 'Backlink URL format is incorrect')
         ->required('campaign_base_url', 'Refresh the page and try again in some time.')
-        ->url('campaign_base_url', 'Refresh the page and try again.')
-        ->matchesBaseUrl('backlink_url', 'campaign_base_url', 'The backlink URL must match the base URL of the campaign.');
+        //->url('campaign_base_url', 'Refresh the page and try again.')
+        //->matchesBaseUrl('target_url', 'campaign_base_url')
+        //if target URL (your website link of any post/page) is empty we will verify the base URL of your website
+    ;
 
     if (!$validator->passes()) {
         $errors = $validator->getErrors();
@@ -29,8 +30,8 @@ if ($method === 'POST') {
     }
 
     $campaign_id = $_POST['campaign_id'];
-    $target_url = $_POST['target_url'];
-    $backlink_url = $_POST['backlink_url'];
+    $target_url = $_POST['target_url']; //campaign website link of any post
+    $backlink_url = $_POST['backlink_url']; //other website link that contains the campaign url
     $anchor_text = $validator->sanitize('anchor_text');
     $created_by = $_SESSION['user_id'];
 
@@ -38,8 +39,8 @@ if ($method === 'POST') {
     $stmt->execute([$campaign_id]);
     $campaign = $stmt->fetch();
 
-    if (!$campaign || !str_starts_with($backlink_url, $campaign['base_url'])) {
-        echo json_encode(['success' => false, 'message' => "The backlink URL must match the campaign's base URL pattern."]);
+    if (!$campaign || (!empty($target_url) && !str_starts_with($target_url, $campaign['base_url']))) {
+        echo json_encode(['success' => false, 'message' => "Your website link URL must match the campaign's base URL pattern."]);
         exit;
     }
 
@@ -56,6 +57,7 @@ if ($method === 'POST') {
     } catch (PDOException $e) {
         error_log("Database error: " . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'We are experiencing a service outage. Please try again later or report to support.']);
+        exit;
     }
 } elseif ($method === 'DELETE') {
     // Parse JSON input

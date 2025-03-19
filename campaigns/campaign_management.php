@@ -69,7 +69,7 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                     </div>
                                     <div class="card-body">
                                         <p><strong>Base URL:</strong> <?= htmlspecialchars($campaign['base_url']) ?></p>
-                                        <p><strong>Verification:</strong> <?= htmlspecialchars($campaign['verification_frequency']) ?></p>
+                                        <p><strong>Verification:</strong> <span class="verification-frequency"> <?= htmlspecialchars($campaign['verification_frequency']) ?></span> </p>
 
                                         <div class="mt-3">
                                             <div class="row g-2 align-items-center">
@@ -209,24 +209,20 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
         </div>
     </div>
 
+    <!-- ... (keep all existing PHP and HTML up to the script tag unchanged) ... -->
+
     <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
         $(document).ready(function() {
 
-            //Update csrf token when ajax request completes
+            // Update csrf token when ajax request completes
             $(document).ajaxComplete(function(event, xhr) {
-
                 let newCsrfToken = xhr.getResponseHeader("X-CSRF-TOKEN");
-
                 if (newCsrfToken) {
-                    // Update the CSRF token in the <meta> tag
                     $("meta[name='csrf-token']").attr("content", newCsrfToken);
-
-                    // Update all hidden CSRF token fields in forms
                     $("input[name='csrf_token']").val(newCsrfToken);
                 }
-
             });
 
             // Create Campaign
@@ -241,38 +237,24 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     dataType: 'json',
                     success: function(response) {
                         if (response.success) {
-                            // Create new campaign card
                             const campaign = response.campaign;
                             const newCard = createCampaignCard(campaign);
                             $('.row-cards').append(newCard);
-
-                            // Close modal and reset form
                             $('#add-campaign-modal').modal('hide');
                             $('#add-campaign-form')[0].reset();
-
-                            // Show success message
                             alert(response.message);
                         } else {
                             alert(response.message);
-
                             let errorResponse = response.errors;
-
-                            // Clear previous error messages
                             $('.error-message').text('');
-
                             $.each(errorResponse, function(fieldName, errors) {
-                                // Find the input field by name
                                 let $inputField = $('input[name="' + fieldName + '"]');
                                 if ($inputField.length) {
-                                    // Find the error message container next to the field
                                     let $errorContainer = $inputField.siblings('.error-message');
-                                    // Set the first error message (you can join multiple if needed)
                                     $errorContainer.text(errors[0]);
-
                                     setTimeout(function() {
                                         $errorContainer.text('');
                                     }, 8000);
-
                                 }
                             });
                         }
@@ -288,7 +270,6 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 e.preventDefault();
                 const form = $(this);
                 const campaignCard = form.closest('.col-md-6');
-
                 $.ajax({
                     url: 'campaign_management_crud.php',
                     type: 'POST',
@@ -309,24 +290,28 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 });
             });
 
-
             // Handle Edit button click
-            $(document).on('click', '.edit-campaign-btn', function() {
-                const campaignId = $(this).data('campaign-id');
-                const campaignName = $(this).data('campaign-name');
-                const verificationFrequency = $(this).data('verification-frequency');
-
+            $(document).on('click', '.edit-campaign-btn', function(e) {
+                const campaignId = $(this).attr('data-campaign-id');
+                const campaignName = $(this).attr('data-campaign-name');
+                const verificationFrequency = $(this).attr('data-verification-frequency');
+                // Populate modal fields
                 $('#edit_campaign_id').val(campaignId);
                 $('#edit_campaign_name').val(campaignName);
                 $('#edit_verification_frequency').val(verificationFrequency);
+
             });
 
+
+
+            // Handle Edit form submission
             // Handle Edit form submission
             $('#edit-campaign-form').on('submit', function(e) {
                 e.preventDefault();
                 const formData = $(this).serialize();
                 const campaignId = $('#edit_campaign_id').val();
                 const campaignCard = $(`.edit-campaign-btn[data-campaign-id="${campaignId}"]`).closest('.col-md-6');
+
                 $.ajax({
                     url: 'campaign_management_crud.php',
                     type: 'POST',
@@ -335,47 +320,32 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     success: function(response) {
                         if (response.success) {
                             const campaign = response.campaign;
+                            //updateCampaignCard(campaignCard, campaign);
 
-                            // Update card content
-                            campaignCard.find('.card-title').text(campaign.name);
-                            campaignCard.find('.verification-frequency').text(campaign.verification_frequency);
+                            //alert(JSON.stringify(campaignCard, null, 2));
 
-                            // Update edit button data attributes
-                            const editBtn = campaignCard.find('.edit-campaign-btn');
-                            editBtn.attr('data-campaign-name', campaign.name);
-                            editBtn.attr('data-verification-frequency', campaign.verification_frequency);
+                            campaignCard.find('.card-title').text(escapeHtml(campaign.name));
+                            campaignCard.find('.verification-frequency').text(escapeHtml(campaign.verification_frequency));
+                            campaignCard.find('.edit-campaign-btn')
+                                .attr('data-campaign-name', escapeHtml(campaign.name))
+                                .attr('data-verification-frequency', escapeHtml(campaign.verification_frequency));
 
-                            // Update the entire card with new data
-                            const newCard = $(createCampaignCard(campaign));
-                            campaignCard.replaceWith(newCard);
-
-                            // Close modal and show success message
                             $('#edit-campaign-modal').modal('hide');
                             alert(response.message);
                         } else {
                             alert(response.message);
                             let errorResponse = response.errors;
-
-                            // Clear previous error messages
                             $('.error-message').text('');
-
                             $.each(errorResponse, function(fieldName, errors) {
-                                // Find the input field by name
                                 let $inputField = $('input[name="' + fieldName + '"]');
                                 if ($inputField.length) {
-                                    // Find the error message container next to the field
                                     let $errorContainer = $inputField.siblings('.error-message');
-                                    // Set the first error message (you can join multiple if needed)
                                     $errorContainer.text(errors[0]);
-
                                     setTimeout(function() {
                                         $errorContainer.text('');
                                     }, 8000);
-
                                 }
                             });
-
-
                         }
                     },
                     error: function(xhr, status, error) {
@@ -384,6 +354,7 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     }
                 });
             });
+
 
             // Helper function to create campaign card HTML
             function createCampaignCard(campaign) {
@@ -401,20 +372,20 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                     <div class="col">
                                         <div class="text-muted">Backlinks Status</div>
                                         <div class="progress progress-separated mb-3">
-                                            <!-- Initial empty progress bars -->
+                                            <!-- Progress bars will be updated dynamically -->
                                         </div>
                                         <div class="row">
                                             <div class="col-auto d-flex align-items-center pe-2">
                                                 <span class="legend me-2 bg-success"></span>
-                                                <span>Alive (0)</span>
+                                                <span>Alive (<span class="alive-count">${campaign.alive_backlinks || 0}</span>)</span>
                                             </div>
                                             <div class="col-auto d-flex align-items-center px-2">
                                                 <span class="legend me-2 bg-danger"></span>
-                                                <span>Dead (0)</span>
+                                                <span>Dead (<span class="dead-count">${campaign.dead_backlinks || 0}</span>)</span>
                                             </div>
                                             <div class="col-auto d-flex align-items-center ps-2">
                                                 <span class="legend me-2 bg-warning"></span>
-                                                <span>Pending (0)</span>
+                                                <span>Pending (<span class="pending-count">${campaign.pending_backlinks || 0}</span>)</span>
                                             </div>
                                         </div>
                                     </div>
@@ -426,7 +397,7 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 <a href="backlink_management.php?campaign_id=${campaign.id}&csrf_token=${window.csrfToken}" class="btn btn-primary">
                                     Manage Backlinks
                                 </a>
-                                <button type="button" class="btn btn-warning edit-campaign-btn" 
+                                <button type="button" class="btn btn-ghost-warning edit-campaign-btn" 
                                     data-campaign-id="${campaign.id}"
                                     data-campaign-name="${escapeHtml(campaign.name)}"
                                     data-verification-frequency="${escapeHtml(campaign.verification_frequency)}"
@@ -438,7 +409,7 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                     <input type="hidden" name="csrf_token" value="${window.csrfToken}">
                                     <input type="hidden" name="action" value="delete_campaign">
                                     <input type="hidden" name="campaign_id" value="${campaign.id}">
-                                    <button type="submit" class="btn btn-danger">
+                                    <button type="submit" class="btn btn-ghost-danger">
                                         Delete
                                     </button>
                                 </form>

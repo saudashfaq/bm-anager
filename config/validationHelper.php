@@ -198,39 +198,57 @@ class ValidationHelper
     public function url(string $field, ?string $customMessage = null): self
     {
         if (isset($this->data[$field]) && !empty($this->data[$field])) {
-            $url = $this->data[$field];
+            $url = trim($this->data[$field]);
 
-            // Basic URL validation using filter_var
-            if (!filter_var($url, FILTER_VALIDATE_URL)) {
+            // Step 1: Normalize the URL by adding a scheme if missing (for validation purposes)
+            $normalizedUrl = $url;
+            if (!preg_match('#^https?://#i', $url)) {
+                // If no scheme is provided, prepend http:// to validate (we'll remove it later)
+                $normalizedUrl = 'http://' . $url;
+            }
+
+            // Step 2: Validate the URL structure using filter_var
+            if (!filter_var($normalizedUrl, FILTER_VALIDATE_URL)) {
                 $message = $customMessage ?? "The {$field} must be a valid URL";
                 $this->errors[$field][] = $message;
-            } else {
-                // Parse the URL to check components
-                $parsedUrl = parse_url($url);
-
-                // Check for scheme (must be https)
-                if (!isset($parsedUrl['scheme']) || strtolower($parsedUrl['scheme']) !== 'https') {
-                    $message = $customMessage ?? "The {$field} must use HTTPS";
-                    $this->errors[$field][] = $message;
-                }
-
-                // Check for host (must exist and contain a dot)
-                if (!isset($parsedUrl['host']) || strpos($parsedUrl['host'], '.') === false) {
-                    $message = $customMessage ?? "The {$field} must include a valid domain with a TLD";
-                    $this->errors[$field][] = $message;
-                } else {
-                    // Extract the TLD and validate it
-                    $hostParts = explode('.', $parsedUrl['host']);
-                    $tld = end($hostParts);
-
-                    // Basic TLD length check (e.g., at least 2 characters) or use a TLD list
-                    if (strlen($tld) < 2) {
-                        $message = $customMessage ?? "The {$field} must have a valid TLD";
-                        $this->errors[$field][] = $message;
-                    }
-                }
+                return $this;
             }
+
+            // Step 3: Parse the URL to check components
+            $parsedUrl = parse_url($normalizedUrl);
+
+            // Check for host (must exist and contain a dot for a valid domain)
+            if (!isset($parsedUrl['host']) || strpos($parsedUrl['host'], '.') === false) {
+                $message = $customMessage ?? "The {$field} must include a valid domain with a TLD";
+                $this->errors[$field][] = $message;
+                return $this;
+            }
+
+            // Extract the TLD and validate it
+            $host = $parsedUrl['host'];
+            $hostParts = explode('.', $host);
+            $tld = end($hostParts);
+
+            // Basic TLD length check (e.g., at least 2 characters)
+            if (strlen($tld) < 2) {
+                $message = $customMessage ?? "The {$field} must have a valid TLD";
+                $this->errors[$field][] = $message;
+                return $this;
+            }
+
+            // Step 4: Normalize the URL for storage (remove scheme and www.)
+            $cleanedHost = preg_replace('#^www\.#i', '', $host); // Remove www.
+            $path = isset($parsedUrl['path']) ? $parsedUrl['path'] : '';
+            $query = isset($parsedUrl['query']) ? '?' . $parsedUrl['query'] : '';
+            $fragment = isset($parsedUrl['fragment']) ? '#' . $parsedUrl['fragment'] : '';
+
+            // Construct the cleaned URL (host + path + query + fragment)
+            $cleanedUrl = $cleanedHost . $path . $query . $fragment;
+
+            // Update the data with the cleaned URL
+            $this->data[$field] = $cleanedUrl;
         }
+
         return $this;
     }
 

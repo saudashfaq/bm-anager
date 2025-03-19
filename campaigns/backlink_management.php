@@ -200,18 +200,18 @@ try {
                                 <input type="hidden" name="campaign_id" id="hidden-campaign-id">
                                 <input type="hidden" name="campaign_base_url" id="hidden-campaign-url">
                                 <div class="mb-3">
-                                    <label class="form-label required">Target URL</label>
-                                    <input type="url" name="target_url" class="form-control" required pattern="https?://.+">
+                                    <label class="form-label required">Backlink <small>(Webpage Link that contains link back to your website)</small> </label>
+                                    <input type="url" name="backlink_url" class="form-control" required maxlength="255">
                                     <span class="error-message" style="color: red;"></span>
                                 </div>
                                 <div class="mb-3">
-                                    <label class="form-label required">Backlink URL</label>
-                                    <input type="url" name="backlink_url" class="form-control" required pattern="https?://.+">
+                                    <label class="form-label">Target <small>(Your Website Link of Post/Page)</small></label>
+                                    <input type="url" name="target_url" class="form-control" maxlength="255">
                                     <span class="error-message" style="color: red;"></span>
                                 </div>
                                 <div class="mb-3">
-                                    <label class="form-label required">Anchor Text</label>
-                                    <input type="text" name="anchor_text" class="form-control" required maxlength="255">
+                                    <label class="form-label">Anchor Text</label>
+                                    <input type="text" name="anchor_text" class="form-control" maxlength="255">
                                     <span class="error-message" style="color: red;"></span>
                                 </div>
                             </div>
@@ -235,30 +235,36 @@ try {
                             <thead>
                                 <tr>
                                     <th><input type="checkbox" id="select-all"></th>
-                                    <th>Target URL</th>
-                                    <th>Backlink URL</th>
-                                    <th>Anchor Text</th>
-                                    <th>Campaign</th>
+
+                                    <th>Backlink</th>
+                                    <th>Anchor</th>
+                                    <th>ReferringLink</th>
                                     <th>Status</th>
-                                    <th>Created By</th>
                                     <th>Created At</th>
                                     <th>Actions</th>
+                                    <!--<th>Campaign</th> -->
+
+                                    <!--<th>Created By</th> -->
+
+
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php foreach ($backlinks as $backlink): ?>
                                     <tr data-id="<?= htmlspecialchars($backlink['id']) ?>">
                                         <td><input type="checkbox" class="backlink-select" value="<?= htmlspecialchars($backlink['id']) ?>"></td>
-                                        <td><?= htmlspecialchars($backlink['target_url']) ?></td>
                                         <td><?= htmlspecialchars($backlink['backlink_url']) ?></td>
                                         <td><?= htmlspecialchars($backlink['anchor_text']) ?></td>
-                                        <td><?= htmlspecialchars($backlink['campaign_name']) ?></td>
+                                        <td><?= htmlspecialchars($backlink['target_url']) ?></td>
+
+
+
                                         <td><span class="badge bg-<?= match ($backlink['status']) {
                                                                         'alive' => 'success',
                                                                         'dead' => 'danger',
                                                                         default => 'warning'
                                                                     } ?>"><?= htmlspecialchars($backlink['status']) ?></span></td>
-                                        <td><?= htmlspecialchars($backlink['created_by_username']) ?></td>
+
                                         <td><?= date('Y-m-d H:i', strtotime($backlink['created_at'])) ?></td>
                                         <td>
                                             <button type="button" class="btn btn-sm btn-danger delete-single" data-id="<?= htmlspecialchars($backlink['id']) ?>">Delete</button>
@@ -374,12 +380,14 @@ try {
                     tbody.append(`
                         <tr data-id="${escapeHtml(bl.id)}">
                             <td><input type="checkbox" class="backlink-select" value="${escapeHtml(bl.id)}"></td>
-                            <td>${escapeHtml(bl.target_url)}</td>
                             <td>${escapeHtml(bl.backlink_url)}</td>
                             <td>${escapeHtml(bl.anchor_text)}</td>
-                            <td>${escapeHtml(bl.campaign_name)}</td>
+                            <td>${escapeHtml(bl.target_url)}</td>
+                            
+                            
+                            
                             <td><span class="badge bg-${bl.status === 'alive' ? 'success' : bl.status === 'dead' ? 'danger' : 'warning'}">${escapeHtml(bl.status)}</span></td>
-                            <td>${escapeHtml(bl.created_by_username)}</td>
+                            
                             <td>${new Date(bl.created_at).toLocaleString()}</td>
                             <td>
                                 <button type="button" class="btn btn-sm btn-danger delete-single" data-id="${escapeHtml(bl.id)}">Delete</button>

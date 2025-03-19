@@ -55,7 +55,7 @@ class BacklinkVerifier
     {
         $query = "
             SELECT b.id, b.backlink_url, b.target_url, b.anchor_text, 
-                c.id AS campaign_id, c.verification_frequency
+                c.id AS campaign_id, c.verification_frequency, c.base_url
             FROM backlinks b
             INNER JOIN campaigns c ON b.campaign_id = c.id
             LEFT JOIN backlink_verification_helper h ON c.id = h.campaign_id
@@ -131,7 +131,7 @@ class BacklinkVerifier
             }
 
             curl_setopt_array($ch, [
-                CURLOPT_URL => $backlink['target_url'],
+                CURLOPT_URL => $backlink['backlink_url'],
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_FOLLOWLOCATION => true,
                 CURLOPT_TIMEOUT => self::TIMEOUT,
@@ -213,7 +213,9 @@ class BacklinkVerifier
             @$dom->loadHTML($content, LIBXML_NOERROR);
             $links = $dom->getElementsByTagName('a');
 
-            $normalizedBacklinkUrl = rtrim(strtolower($backlink['backlink_url']), '/');
+            //if target url is missing then campaign's base url will be searched
+            $link_to_search = $backlink['target_url'] ?? $backlink['base_url'];
+            $normalizedBacklinkUrl = rtrim(strtolower($link_to_search), '/');
 
             foreach ($links as $link) {
                 $href = rtrim(strtolower($link->getAttribute('href')), '/');
