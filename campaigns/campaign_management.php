@@ -51,7 +51,7 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                     <path d="M12 5l0 14" />
                                     <path d="M5 12l14 0" />
                                 </svg>
-                                Add Campaign
+                                Add New Campaign
                             </button>
                         </div>
                     </div>
@@ -61,6 +61,39 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <div class="page-body">
                 <div class="container-xl">
                     <div class="row row-cards">
+
+
+                        <!-- Display message if no campaigns are found -->
+                        <?php if (empty($campaigns)): ?>
+                            <div class="col-12 text-center">
+                                <div class="empty">
+                                    <div class="empty-icon">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-folder-off" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                                            <path d="M3 3l18 18" />
+                                            <path d="M19 7h-8.5l-4.015 -4.015a2 2 0 0 0 -1.985 -.985h-2.5a2 2 0 0 0 -2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2 -2v-10" />
+                                        </svg>
+                                    </div>
+                                    <p class="empty-title">No campaigns found</p>
+                                    <p class="empty-subtitle text-muted">
+                                        It looks like you haven't created any campaigns yet. Let's get started!
+                                    </p>
+                                    <div class="empty-action">
+                                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#add-campaign-modal">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                                <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                                                <path d="M12 5l0 14" />
+                                                <path d="M5 12l14 0" />
+                                            </svg>
+                                            Create Your First Campaign
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+
+
+
                         <?php foreach ($campaigns as $campaign): ?>
                             <div class="col-md-6 col-lg-4">
                                 <div class="card">
