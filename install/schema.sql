@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS campaigns (
     last_checked DATETIME DEFAULT NULL,
     status  ENUM('enabled', 'disabled') NOT NULL DEFAULT 'enabled',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT NULL,
+    updated_at TIMESTAMP NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 

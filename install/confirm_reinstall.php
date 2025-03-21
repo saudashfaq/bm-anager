@@ -1,42 +1,8 @@
 <?php
 session_start();
 
-// Check if we actually came from the installation process
-if (!isset($_SESSION['reinstall']) || !$_SESSION['reinstall']) {
-    header("Location: index.php");
-    exit;
-}
-
-// If form is submitted
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['action'])) {
-        if ($_POST['action'] === 'proceed') {
-            // Restore form data from session
-            if (isset($_SESSION['form_data']) && is_array($_SESSION['form_data'])) {
-                foreach ($_SESSION['form_data'] as $key => $value) {
-                    $_POST[$key] = $value;
-                }
-
-                // Set a flag to skip the initial checks in process_install.php
-                $_SESSION['skip_install_check'] = true;
-
-                // Include the installation process
-                require_once __DIR__ . '/process_install.php';
-                exit;
-            }
-        } elseif ($_POST['action'] === 'cancel') {
-            // Cancel installation
-            unset($_SESSION['reinstall']);
-            unset($_SESSION['form_data']);
-            unset($_SESSION['warning']);
-            header("Location: index.php");
-            exit;
-        }
-    }
-}
-
-// Check if warning message exists
-if (!isset($_SESSION['warning'])) {
+// Redirect to index.php if no reinstallation is needed
+if (empty($_SESSION['reinstall'])) {
     header("Location: index.php");
     exit;
 }
@@ -50,51 +16,135 @@ if (!isset($_SESSION['warning'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Confirm Reinstallation</title>
     <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: #f4f6fa;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+        }
+
+        .confirm-container {
+            max-width: 600px;
+            width: 100%;
+            margin: 1rem;
+            background: #ffffff;
+            border-radius: 1rem;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .confirm-header {
+            background: linear-gradient(135deg, #d63939 0%, #b32d2d 100%);
+            color: #ffffff;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .confirm-header h2 {
+            font-size: 1.75rem;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .confirm-header p {
+            font-size: 1rem;
+            opacity: 0.8;
+            margin: 0.5rem 0 0;
+        }
+
+        .confirm-body {
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .confirm-body .alert {
+            border-radius: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .confirm-body .btn {
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 500;
+            border-radius: 0.5rem;
+            transition: all 0.3s ease;
+            margin: 0 0.5rem;
+        }
+
+        .confirm-body .btn-primary {
+            background-color: #206bc4;
+            border: none;
+        }
+
+        .confirm-body .btn-primary:hover {
+            background-color: #1a5aa3;
+        }
+
+        .confirm-body .btn-secondary {
+            background-color: #6c757d;
+            border: none;
+        }
+
+        .confirm-body .btn-secondary:hover {
+            background-color: #5a6268;
+        }
+
+        .confirm-body .btn svg {
+            width: 20px;
+            height: 20px;
+            margin-right: 0.5rem;
+        }
+    </style>
 </head>
 
 <body>
-    <div class="page">
-        <div class="container-tight py-4">
-            <div class="text-center mb-4">
-                <h2>Confirm Reinstallation</h2>
-            </div>
-
-            <div class="card card-md">
-                <div class="card-body">
-                    <div class="alert alert-warning">
-                        <?= htmlspecialchars($_SESSION['warning']) ?>
-                    </div>
-
-                    <div class="d-flex justify-content-between mt-4">
-                        <form method="POST" action="<?= $_SERVER['PHP_SELF'] ?>" style="margin-right: 10px;">
-                            <input type="hidden" name="action" value="cancel">
-                            <button type="submit" class="btn btn-outline-danger w-100">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-x" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                                    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
-                                    <path d="M18 6l-12 12"></path>
-                                    <path d="M6 6l12 12"></path>
-                                </svg>
-                                Cancel Installation
-                            </button>
-                        </form>
-
-                        <form method="POST" action="<?= $_SERVER['PHP_SELF'] ?>">
-                            <input type="hidden" name="action" value="proceed">
-                            <button type="submit" class="btn btn-success w-100">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-check" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                                    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
-                                    <path d="M5 12l5 5l10 -10"></path>
-                                </svg>
-                                Proceed with Reinstall
-                            </button>
-                        </form>
-                    </div>
+    <div class="confirm-container">
+        <div class="confirm-header">
+            <h2>Confirm Reinstallation</h2>
+            <p>Proceed with caution</p>
+        </div>
+        <div class="confirm-body">
+            <?php if (isset($_SESSION['warning'])): ?>
+                <div class="alert alert-warning">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-alert-triangle me-2" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                        <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                        <path d="M12 9v2m0 4v.01" />
+                        <path d="M5 19h14a2 2 0 0 0 1.84 -2.75l-7.1 -12.25a2 2 0 0 0 -3.48 0l-7.1 12.25a2 2 0 0 0 1.84 2.75z" />
+                    </svg>
+                    <?= htmlspecialchars($_SESSION['warning']) ?>
                 </div>
-            </div>
+            <?php endif; ?>
+            <form action="process_install.php" method="POST" style="display: inline;">
+                <input type="hidden" name="skip_install_check" value="1">
+                <?php
+                // Preserve form data
+                if (isset($_SESSION['form_data'])) {
+                    foreach ($_SESSION['form_data'] as $key => $value) {
+                        echo '<input type="hidden" name="' . htmlspecialchars($key) . '" value="' . htmlspecialchars($value) . '">';
+                    }
+                }
+                ?>
+                <button type="submit" class="btn btn-primary">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-check" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                        <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                        <path d="M5 12l5 5l10 -10" />
+                    </svg>
+                    Yes, Proceed
+                </button>
+            </form>
+            <a href="index.php" class="btn btn-secondary">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-x" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                    <path d="M18 6l-12 12" />
+                    <path d="M6 6l12 12" />
+                </svg>
+                Cancel
+            </a>
         </div>
     </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js"></script>
 </body>
 
 </html>
