@@ -159,7 +159,7 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 <div class="card">
                                     <div class="card-header">
                                         <h3 class="card-title"><?= htmlspecialchars($campaign['name']) ?></h3>
-                                        <span class="badge ms-auto bg-<?= $campaign['status'] === 'enabled' ? 'success' : 'danger' ?>">
+                                        <span class="badge ms-auto bg-<?= $campaign['status'] === 'enabled' ? 'green-lt' : 'red-lt' ?>">
                                             <?= ucfirst($campaign['status']) ?>
                                         </span>
                                     </div>
@@ -546,8 +546,8 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             campaignCard.find('.card-title').text(escapeHtml(campaign.name));
                             campaignCard.find('.verification-frequency').text(escapeHtml(capitalizeFirstLetter(campaign.verification_frequency)));
                             campaignCard.find('.badge').text(campaign.status.charAt(0).toUpperCase() + campaign.status.slice(1))
-                                .removeClass('bg-success bg-danger')
-                                .addClass(campaign.status === 'enabled' ? 'bg-success' : 'bg-danger');
+                                .removeClass('bg-green-lt bg-red-lt')
+                                .addClass(campaign.status === 'enabled' ? 'bg-green-lt' : 'bg-red-lt');
                             campaignCard.find('.edit-campaign-btn')
                                 .attr('data-campaign-name', escapeHtml(campaign.name))
                                 .attr('data-verification-frequency', escapeHtml(campaign.verification_frequency))
@@ -665,7 +665,7 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
         <div class="card">
             <div class="card-header">
                 <h3 class="card-title">${escapeHtml(campaign.name)}</h3>
-                <span class="badge ms-auto bg-${campaign.status === 'enabled' ? 'success' : 'danger'}">${campaign.status.charAt(0).toUpperCase() + campaign.status.slice(1)}</span>
+                <span class="badge ms-auto bg-${campaign.status === 'enabled' ? 'green-lt' : 'red-lt'}">${campaign.status.charAt(0).toUpperCase() + campaign.status.slice(1)}</span>
             </div>
             <div class="card-body">
                 <p>
