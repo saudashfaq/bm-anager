@@ -1,10 +1,11 @@
 <?php
+
 // campaign_management.php
 require_once __DIR__ . '/../middleware.php';
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../config/constants.php';
 
-// Get campaigns with backlink counts, sorted by created_at DESC (latest first)
+// Get campaigns with backlink counts
 $stmt = $pdo->query("
     SELECT 
         c.*,
@@ -15,9 +16,9 @@ $stmt = $pdo->query("
     FROM campaigns c
     LEFT JOIN backlinks b ON c.id = b.campaign_id
     GROUP BY c.id
-    ORDER BY c.created_at DESC
 ");
 $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
 ?>
 
 <!DOCTYPE html>
@@ -29,12 +30,6 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <meta name="csrf-token" content="<?= getCSRFToken() ?>">
     <title>Campaign Management</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css">
-    <style>
-        .error-message {
-            color: red;
-            font-size: 0.875rem;
-        }
-    </style>
 </head>
 
 <body class="theme-light">
@@ -75,56 +70,7 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             <div class="page-body">
                 <div class="container-xl">
-                    <!-- Filter and Search Options -->
-                    <div class="row mb-4 align-items-center">
-                        <div class="col-md-4">
-                            <div class="input-group">
-                                <span class="input-group-text">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-search" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                                        <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                                        <circle cx="10" cy="10" r="7" />
-                                        <path d="M21 21l-6 -6" />
-                                    </svg>
-                                </span>
-                                <input type="text" id="search-campaign" class="form-control" placeholder="Search by name or URL">
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="input-group">
-                                <span class="input-group-text">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-sort-ascending-letters" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                                        <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                                        <path d="M15 10v-5h-3l3 -3l3 3h-3v5z" />
-                                        <path d="M15 14v7h3l-3 3l-3 -3h3v-7z" />
-                                        <path d="M4 15h7" />
-                                        <path d="M4 9h6" />
-                                        <path d="M4 4h5" />
-                                    </svg>
-                                </span>
-                                <select id="sort-campaigns" class="form-select">
-                                    <option value="name-asc">Alphabetically (A-Z)</option>
-                                    <option value="name-desc">Alphabetically (Z-A)</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="input-group">
-                                <span class="input-group-text">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-filter" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                                        <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                                        <path d="M4 4h16v2.172a2 2 0 0 1 -.586 1.414l-4.414 4.414v7l-6 2v-8.5l-4.48 -4.928a2 2 0 0 1 -.52 -1.345v-2.227z" />
-                                    </svg>
-                                </span>
-                                <select id="filter-status" class="form-select">
-                                    <option value="all">All Campaigns</option>
-                                    <option value="enabled">Enabled</option>
-                                    <option value="disabled">Disabled</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row row-cards" id="campaigns-container">
+                    <div class="row row-cards">
                         <!-- Display message if no campaigns are found -->
                         <?php if (empty($campaigns)): ?>
                             <div class="col-12 text-center">
@@ -155,13 +101,10 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         <?php endif; ?>
 
                         <?php foreach ($campaigns as $campaign): ?>
-                            <div class="col-md-6 col-lg-4 campaign-card" data-name="<?= htmlspecialchars(strtolower($campaign['name'])) ?>" data-base-url="<?= htmlspecialchars(strtolower($campaign['base_url'])) ?>" data-status="<?= htmlspecialchars($campaign['status']) ?>" data-created-at="<?= htmlspecialchars($campaign['created_at']) ?>">
+                            <div class="col-md-6 col-lg-4">
                                 <div class="card">
                                     <div class="card-header">
                                         <h3 class="card-title"><?= htmlspecialchars($campaign['name']) ?></h3>
-                                        <span class="badge ms-auto bg-<?= $campaign['status'] === 'enabled' ? 'success' : 'danger' ?>">
-                                            <?= ucfirst($campaign['status']) ?>
-                                        </span>
                                     </div>
                                     <div class="card-body">
                                         <p>
@@ -239,7 +182,6 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                                 data-campaign-id="<?= $campaign['id'] ?>"
                                                 data-campaign-name="<?= htmlspecialchars($campaign['name']) ?>"
                                                 data-verification-frequency="<?= htmlspecialchars($campaign['verification_frequency']) ?>"
-                                                data-status="<?= htmlspecialchars($campaign['status']) ?>"
                                                 data-bs-toggle="modal"
                                                 data-bs-target="#edit-campaign-modal">
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-edit me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
@@ -295,7 +237,7 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <form id="add-campaign-form">
                     <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                     <input type="hidden" name="action" value="create_campaign">
-                    <input type="hidden" name="status" value="enabled"> <!-- Default status for new campaigns -->
+
                     <div class="modal-body">
                         <div class="mb-3">
                             <label class="form-label">Campaign Name</label>
@@ -339,7 +281,7 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
         </div>
     </div>
 
-    <!-- Edit Campaign Modal -->
+    <!-- Add Edit Campaign Modal -->
     <div class="modal modal-blur fade" id="edit-campaign-modal" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog modal-lg" role="document">
             <div class="modal-content">
@@ -374,13 +316,6 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             </select>
                             <span class="error-message" style="color: red;"></span>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label">Status</label>
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" name="status" id="edit_campaign_status" value="enabled">
-                                <label class="form-check-label" for="edit_campaign_status">Enabled</label>
-                            </div>
-                        </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-link link-secondary" data-bs-dismiss="modal">
@@ -404,22 +339,15 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
         </div>
     </div>
 
+    <!-- ... (keep all existing PHP and HTML up to the script tag unchanged) ... -->
+
     <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="../includes/genralfunc.js"></script>
     <script>
         $(document).ready(function() {
-            // Store the original list of campaign cards
-            let originalCampaignCards = $('.campaign-card').get();
 
-            // Sort originalCampaignCards by created_at DESC initially
-            originalCampaignCards.sort((a, b) => {
-                const createdAtA = $(a).data('created-at');
-                const createdAtB = $(b).data('created-at');
-                return new Date(createdAtB) - new Date(createdAtA); // DESC order
-            });
-
-            // Update CSRF token when AJAX request completes
+            // Update csrf token when ajax request completes
             $(document).ajaxComplete(function(event, xhr) {
                 let newCsrfToken = xhr.getResponseHeader("X-CSRF-TOKEN");
                 if (newCsrfToken) {
@@ -432,7 +360,9 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
             let csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute("content");
 
             $('#add-campaign-form').on('submit', function(e) {
+
                 e.preventDefault();
+
                 sanitizeURL('#base_url');
 
                 $.ajax({
@@ -444,19 +374,12 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         if (response.success) {
                             const campaign = response.campaign;
                             const newCard = createCampaignCard(campaign);
-                            $('#campaigns-container').prepend(newCard); // Prepend to show as first item
+                            $('.row-cards').append(newCard);
                             $('#add-campaign-modal').modal('hide');
                             $('#add-campaign-form')[0].reset();
                             $("div .empty").hide();
                             alert(response.message);
-                            // Add the new card to originalCampaignCards and sort by created_at
-                            originalCampaignCards.unshift($(newCard).get(0));
-                            originalCampaignCards.sort((a, b) => {
-                                const createdAtA = $(a).data('created-at');
-                                const createdAtB = $(b).data('created-at');
-                                return new Date(createdAtB) - new Date(createdAtA); // DESC order
-                            });
-                            applyFiltersAndSort(); // Reapply filters and sorting after adding
+
                         } else {
                             alert(response.message);
                             let errorResponse = response.errors;
@@ -491,16 +414,8 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     dataType: 'json',
                     success: function(response) {
                         if (response.success) {
-                            // Remove the card from the original list
-                            const index = originalCampaignCards.indexOf(campaignCard.get(0));
-                            if (index !== -1) {
-                                originalCampaignCards.splice(index, 1);
-                            }
                             campaignCard.remove();
                             alert(response.message);
-                            if ($('#campaigns-container').children().length === 0) {
-                                $("div .empty").show();
-                            }
                         } else {
                             alert(response.message);
                         }
@@ -517,20 +432,23 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 const campaignId = $(this).attr('data-campaign-id');
                 const campaignName = $(this).attr('data-campaign-name');
                 const verificationFrequency = $(this).attr('data-verification-frequency');
-                const status = $(this).attr('data-status');
                 // Populate modal fields
                 $('#edit_campaign_id').val(campaignId);
                 $('#edit_campaign_name').val(campaignName);
                 $('#edit_verification_frequency').val(verificationFrequency);
-                $('#edit_campaign_status').prop('checked', status === 'enabled');
+
             });
 
+
+            function capitalizeFirstLetter(string) {
+                return string.charAt(0).toUpperCase() + string.slice(1);
+            }
+
+
+            // Handle Edit form submission
             // Handle Edit form submission
             $('#edit-campaign-form').on('submit', function(e) {
                 e.preventDefault();
-                // Ensure status is sent as 'enabled' or 'disabled'
-                const statusCheckbox = $('#edit_campaign_status');
-                statusCheckbox.val(statusCheckbox.is(':checked') ? 'enabled' : 'disabled');
                 const formData = $(this).serialize();
                 const campaignId = $('#edit_campaign_id').val();
                 const campaignCard = $(`.edit-campaign-btn[data-campaign-id="${campaignId}"]`).closest('.col-md-6');
@@ -543,28 +461,18 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     success: function(response) {
                         if (response.success) {
                             const campaign = response.campaign;
+                            //updateCampaignCard(campaignCard, campaign);
+
+                            //alert(JSON.stringify(campaignCard, null, 2));
+
                             campaignCard.find('.card-title').text(escapeHtml(campaign.name));
                             campaignCard.find('.verification-frequency').text(escapeHtml(capitalizeFirstLetter(campaign.verification_frequency)));
-                            campaignCard.find('.badge').text(campaign.status.charAt(0).toUpperCase() + campaign.status.slice(1))
-                                .removeClass('bg-success bg-danger')
-                                .addClass(campaign.status === 'enabled' ? 'bg-success' : 'bg-danger');
                             campaignCard.find('.edit-campaign-btn')
                                 .attr('data-campaign-name', escapeHtml(campaign.name))
-                                .attr('data-verification-frequency', escapeHtml(campaign.verification_frequency))
-                                .attr('data-status', campaign.status);
-                            campaignCard.data('name', campaign.name.toLowerCase());
-                            campaignCard.data('status', campaign.status);
-                            // Update created_at in case it changes (though typically it shouldn't)
-                            campaignCard.data('created-at', campaign.created_at);
+                                .attr('data-verification-frequency', escapeHtml(campaign.verification_frequency));
+
                             $('#edit-campaign-modal').modal('hide');
                             alert(response.message);
-                            // Sort originalCampaignCards by created_at to maintain order
-                            originalCampaignCards.sort((a, b) => {
-                                const createdAtA = $(a).data('created-at');
-                                const createdAtB = $(b).data('created-at');
-                                return new Date(createdAtB) - new Date(createdAtA); // DESC order
-                            });
-                            applyFiltersAndSort(); // Reapply filters and sorting after editing
                         } else {
                             alert(response.message);
                             let errorResponse = response.errors;
@@ -588,84 +496,14 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 });
             });
 
-            // Search functionality
-            $('#search-campaign').on('input', function() {
-                applyFiltersAndSort();
-            });
-
-            // Sort functionality
-            $('#sort-campaigns').on('change', function() {
-                applyFiltersAndSort();
-            });
-
-            // Filter by status
-            $('#filter-status').on('change', function() {
-                applyFiltersAndSort();
-            });
-
-            // Function to apply filters and sorting
-            function applyFiltersAndSort() {
-                const searchQuery = $('#search-campaign').val().toLowerCase();
-                const sortOption = $('#sort-campaigns').val();
-                const statusFilter = $('#filter-status').val();
-
-                // Start with the full list of campaigns
-                let campaignCards = originalCampaignCards.slice();
-
-                // Filter by search query (only if search query is not empty)
-                if (searchQuery) {
-                    campaignCards = campaignCards.filter(function(card) {
-                        const name = $(card).data('name');
-                        const baseUrl = $(card).data('base-url');
-                        return name.includes(searchQuery) || baseUrl.includes(searchQuery);
-                    });
-                }
-
-                // Filter by status
-                if (statusFilter !== 'all') {
-                    campaignCards = campaignCards.filter(function(card) {
-                        return $(card).data('status') === statusFilter;
-                    });
-                }
-
-                // Sort campaigns
-                campaignCards.sort(function(a, b) {
-                    const nameA = $(a).data('name');
-                    const nameB = $(b).data('name');
-                    const createdAtA = $(a).data('created-at');
-                    const createdAtB = $(b).data('created-at');
-
-                    // If sortOption is alphabetical, sort by name
-                    if (sortOption === 'name-asc') {
-                        return nameA.localeCompare(nameB);
-                    } else if (sortOption === 'name-desc') {
-                        return nameB.localeCompare(nameA);
-                    } else {
-                        // Default: sort by created_at DESC
-                        return new Date(createdAtB) - new Date(createdAtA);
-                    }
-                });
-
-                // Re-render campaigns
-                $('#campaigns-container').empty();
-                if (campaignCards.length === 0) {
-                    $("div .empty").show();
-                } else {
-                    $("div .empty").hide();
-                    campaignCards.forEach(function(card) {
-                        $('#campaigns-container').append(card);
-                    });
-                }
-            }
 
             // Helper function to create campaign card HTML
             function createCampaignCard(campaign) {
                 return `
-    <div class="col-md-6 col-lg-4 campaign-card" data-name="${escapeHtml(campaign.name.toLowerCase())}" data-base-url="${escapeHtml(campaign.base_url.toLowerCase())}" data-status="${campaign.status}" data-created-at="${campaign.created_at}">
+    <div class="col-md-6 col-lg-4">
         <div class="card">
             <div class="card-header">
                 <h3 class="card-title">${escapeHtml(campaign.name)}</h3>
-                <span class="badge ms-auto bg-${campaign.status === 'enabled' ? 'success' : 'danger'}">${campaign.status.charAt(0).toUpperCase() + campaign.status.slice(1)}</span>
             </div>
             <div class="card-body">
                 <p>
@@ -688,7 +526,7 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         </svg>
                         Verification:
                     </strong>
-                    <span class="verification-frequency">${escapeHtml(capitalizeFirstLetter(campaign.verification_frequency))}</span>
+                    <span class="verification-frequency">${escapeHtml(capitalizeFirstLetter(campaign.verification_frequency) )}</span>
                 </p>
                 <div class="mt-3">
                     <div class="row g-2 align-items-center">
@@ -704,11 +542,7 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 Backlinks Status
                             </div>
                             <div class="progress progress-separated mb-3">
-                                ${campaign.total_backlinks > 0 ? `
-                                    <div class="progress-bar bg-success" role="progressbar" style="width: ${(campaign.alive_backlinks / campaign.total_backlinks) * 100}%"></div>
-                                    <div class="progress-bar bg-danger" role="progressbar" style="width: ${(campaign.dead_backlinks / campaign.total_backlinks) * 100}%"></div>
-                                    <div class="progress-bar bg-warning" role="progressbar" style="width: ${(campaign.pending_backlinks / campaign.total_backlinks) * 100}%"></div>
-                                ` : ''}
+                                <!-- Progress bars will be updated dynamically -->
                             </div>
                             <div class="row">
                                 <div class="col-auto d-flex align-items-center pe-2">
@@ -741,8 +575,7 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <button type="button" class="btn btn-ghost-warning edit-campaign-btn"
                         data-campaign-id="${campaign.id}"
                         data-campaign-name="${escapeHtml(campaign.name)}"
-                        data-verification-frequency="${escapeHtml(campaign.verification_frequency)}"
-                        data-status="${campaign.status}"
+                        data-verification-frequency="${escapeHtml( campaign.verification_frequency)}"
                         data-bs-toggle="modal"
                         data-bs-target="#edit-campaign-modal">
                         <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-edit me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
@@ -785,16 +618,11 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
             // Helper function to escape HTML
             function escapeHtml(unsafe) {
                 return unsafe
-                    .replace(/&/g, "&")
-                    .replace(/</g, "<")
-                    .replace(/>/g, ">")
-                    .replace(/"/g, "\"")
-                    .replace(/'/g, "'");
-            }
-
-            // Helper function to capitalize first letter
-            function capitalizeFirstLetter(string) {
-                return string.charAt(0).toUpperCase() + string.slice(1);
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;")
+                    .replace(/'/g, "&#039;");
             }
         });
     </script>

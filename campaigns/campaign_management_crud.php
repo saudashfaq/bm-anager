@@ -31,7 +31,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     //Handle create new campaign request
     if (isset($_POST['action']) && $_POST['action'] === 'create_campaign') {
         try {
-
             $validator = new ValidationHelper($_POST);
             $validator
                 ->required('campaign_name', 'Campaign name is required')
@@ -134,8 +133,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     exit;
                 }
 
-                $stmt = $pdo->prepare("UPDATE campaigns SET `name` = ?, verification_frequency = ?, updated_at = NOW() WHERE id = ?");
-                $stmt->execute([$campaign_name, $verification_frequency, $campaign_id]);
+                require_once __DIR__ . '/../config/constants.php';
+
+                $status = $campaign_statuses['disabled']['value'];
+
+                if (isset($_POST['status'])) {
+
+                    $status = in_array($_POST['status'], array_keys($campaign_statuses)) ? $_POST['status'] : $status;
+                }
+
+                $stmt = $pdo->prepare("UPDATE campaigns SET `name` = ?, verification_frequency = ?, `status` = ?, updated_at = NOW() WHERE id = ?");
+                $stmt->execute([$campaign_name, $verification_frequency, $status, $campaign_id]);
 
                 // Fetch updated campaign data
                 $stmt = $pdo->prepare("SELECT * FROM campaigns WHERE id = ?");
