@@ -206,7 +206,7 @@ try {
                                 </div>
                                 <div class="mb-3">
                                     <label class="form-label">Target <small>(Your Website Link of Post/Page)</small></label>
-                                    <input type="url" name="target_url" class="form-control" maxlength="255">
+                                    <input type="text" name="target_url" class="form-control" maxlength="255">
                                     <span class="error-message" style="color: red;"></span>
                                 </div>
                                 <div class="mb-3">
@@ -281,6 +281,8 @@ try {
             </div>
         </div>
     </div>
+
+    //TODO: BulkAdd backlinks
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p" crossorigin="anonymous"></script>
@@ -414,7 +416,7 @@ try {
             $('#add-backlink-form').on('submit', function(e) {
                 e.preventDefault();
                 const formData = $(this).serialize();
-                $('.loading').show();
+                //$('.loading').show();
 
                 $.ajax({
                     url: $(this).attr('action'),
@@ -426,6 +428,7 @@ try {
                             $('.btn-close')[0].click();
                             $('#campaign-select').trigger('change');
                         } else {
+                            alert(data.message);
                             $('.error-message').text('');
                             $.each(data.errors || {}, function(fieldName, errors) {
                                 const $inputField = $('input[name="' + fieldName + '"]');
@@ -437,6 +440,7 @@ try {
                                     }, 8000);
                                 }
                             });
+                            //$('.loading').hide();
                         }
                     },
                     error: function(xhr) {

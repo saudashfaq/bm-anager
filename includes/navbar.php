@@ -37,9 +37,7 @@
                     Campaign Management
                 </a>
                 <?php if ($_SESSION['role'] === 'admin'): ?>
-                    <a class="nav-item nav-link <?= ((basename($_SERVER['PHP_SELF']) == 'index.php' || basename($_SERVER['PHP_SELF']) == 'form.php
-
-') && strpos($_SERVER['REQUEST_URI'], 'users') !== false) ? 'active' : '' ?>" href="<?= BASE_URL ?>users/index.php">
+                    <a class="nav-item nav-link <?= ((basename($_SERVER['PHP_SELF']) == 'index.php' || basename($_SERVER['PHP_SELF']) == 'form.php') && strpos($_SERVER['REQUEST_URI'], 'users') !== false) ? 'active' : '' ?>" href="<?= BASE_URL ?>users/index.php">
                         <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-users me-2" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
                             <path stroke="none" d="M0 0h24v24H0z" fill="none" />
                             <circle cx="9" cy="7" r="4" />

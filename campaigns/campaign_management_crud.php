@@ -35,11 +35,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $validator = new ValidationHelper($_POST);
             $validator
                 ->required('campaign_name', 'Campaign name is required')
-                ->minLength('campaign_name', 4)
+                ->minLength('campaign_name', 3)
                 ->maxLength('campaign_name', 255)
                 ->required('base_url')
                 ->url('base_url')
-                ->minLength('base_url', 11)
+                ->minLength('base_url', 5)
                 ->maxLength('base_url', 255)
                 ->required('verification_frequency')
                 ->in('verification_frequency', array_keys($campaign_frequency));
@@ -157,10 +157,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 exit;
             } else {
-                http_response_code(403);
+                http_response_code(200);
                 echo json_encode([
                     'success' => false,
-                    'message' => 'Unauthorized access'
+                    'message' => 'You are not authorized to access this action.'
                 ]);
                 exit;
             }

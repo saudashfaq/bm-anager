@@ -42,17 +42,7 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <div class="container-xl">
                     <div class="row g-2 align-items-center">
                         <div class="col">
-                            <h2 class="page-title">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-building-store me-2" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                                    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                                    <path d="M3 21l18 0" />
-                                    <path d="M3 7v1a3 3 0 0 0 6 0v-1m4 0v1a3 3 0 0 0 6 0v-1" />
-                                    <path d="M5 21v-12a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v12" />
-                                    <path d="M10 14v-2a2 2 0 1 1 4 0v2" />
-                                    <path d="M10 21v-4a2 2 0 1 1 4 0v4" />
-                                </svg>
-                                Campaign Manager
-                            </h2>
+                            <h2 class="page-title">Campaign Manager</h2>
                         </div>
                         <div class="col-auto ms-auto">
                             <button class="btn btn-ghost-primary" data-bs-toggle="modal" data-bs-target="#add-campaign-modal">
@@ -71,6 +61,8 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <div class="page-body">
                 <div class="container-xl">
                     <div class="row row-cards">
+
+
                         <!-- Display message if no campaigns are found -->
                         <?php if (empty($campaigns)): ?>
                             <div class="col-12 text-center">
@@ -100,6 +92,8 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             </div>
                         <?php endif; ?>
 
+
+
                         <?php foreach ($campaigns as $campaign): ?>
                             <div class="col-md-6 col-lg-4">
                                 <div class="card">
@@ -107,42 +101,13 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                         <h3 class="card-title"><?= htmlspecialchars($campaign['name']) ?></h3>
                                     </div>
                                     <div class="card-body">
-                                        <p>
-                                            <strong>
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-link me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                                                    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                                                    <path d="M10 14a3.5 3.5 0 0 0 5 0l4 -4a3.5 3.5 0 0 0 -5 -5l-.5 .5" />
-                                                    <path d="M14 10a3.5 3.5 0 0 0 -5 0l-4 4a3.5 3.5 0 0 0 5 5l.5 -.5" />
-                                                </svg>
-                                                Base URL:
-                                            </strong>
-                                            <?= htmlspecialchars($campaign['base_url']) ?>
-                                        </p>
-                                        <p>
-                                            <strong>
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-clock me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                                                    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                                                    <circle cx="12" cy="12" r="9" />
-                                                    <path d="M12 7v5l3 3" />
-                                                </svg>
-                                                Verification:
-                                            </strong>
-                                            <span class="verification-frequency"> <?= htmlspecialchars(ucfirst($campaign['verification_frequency'])) ?></span>
-                                        </p>
+                                        <p><strong>Base URL:</strong> <?= htmlspecialchars($campaign['base_url']) ?></p>
+                                        <p><strong>Verification:</strong> <span class="verification-frequency"> <?= htmlspecialchars(ucfirst($campaign['verification_frequency'])) ?></span> </p>
 
                                         <div class="mt-3">
                                             <div class="row g-2 align-items-center">
                                                 <div class="col">
-                                                    <div class="text-muted">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-chart-bar me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                                                            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                                                            <path d="M3 12h4v8h-4z" />
-                                                            <path d="M10 8h4v12h-4z" />
-                                                            <path d="M17 4h4v16h-4z" />
-                                                            <path d="M3 20h18" />
-                                                        </svg>
-                                                        Backlinks Status
-                                                    </div>
+                                                    <div class="text-muted">Backlinks Status</div>
                                                     <div class="progress progress-separated mb-3">
                                                         <?php if ($campaign['total_backlinks'] > 0): ?>
                                                             <div class="progress-bar bg-success" role="progressbar" style="width: <?= ($campaign['alive_backlinks'] / $campaign['total_backlinks']) * 100 ?>%"></div>
@@ -171,11 +136,6 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                     <div class="card-footer">
                                         <div class="btn-list">
                                             <a href="backlink_management.php?campaign_id=<?= $campaign['id'] ?>" class="btn btn-primary">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-link me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                                                    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                                                    <path d="M10 14a3.5 3.5 0 0 0 5 0l4 -4a3.5 3.5 0 0 0 -5 -5l-.5 .5" />
-                                                    <path d="M14 10a3.5 3.5 0 0 0 -5 0l-4 4a3.5 3.5 0 0 0 5 5l.5 -.5" />
-                                                </svg>
                                                 Manage Backlinks
                                             </a>
                                             <button type="button" class="btn btn-ghost-warning edit-campaign-btn"
@@ -184,29 +144,13 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                                 data-verification-frequency="<?= htmlspecialchars($campaign['verification_frequency']) ?>"
                                                 data-bs-toggle="modal"
                                                 data-bs-target="#edit-campaign-modal">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-edit me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                                                    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                                                    <path d="M7 7h-1a2 2 0 0 0 -2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2 -2v-1" />
-                                                    <path d="M20.385 6.585a2.1 2.1 0 0 0 -2.97 -2.97l-8.415 8.385v3h3l8.385 -8.415z" />
-                                                    <path d="M16 5l3 3" />
-                                                </svg>
                                                 Edit
                                             </button>
                                             <form class="delete-campaign-form" style="display:inline;">
                                                 <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                                                 <input type="hidden" name="action" value="delete_campaign">
                                                 <input type="hidden" name="campaign_id" value="<?= $campaign['id'] ?>">
-                                                <button type="submit" class="btn btn-ghost-danger" onclick="return confirm('Are you sure?')">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-trash me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                                                        <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                                                        <path d="M4 7h16" />
-                                                        <path d="M10 11v6" />
-                                                        <path d="M14 11v6" />
-                                                        <path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" />
-                                                        <path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" />
-                                                    </svg>
-                                                    Delete
-                                                </button>
+                                                <button type="submit" class="btn btn-ghost-danger" onclick="return confirm('Are you sure?')">Delete</button>
                                             </form>
                                         </div>
                                     </div>
@@ -224,14 +168,7 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
         <div class="modal-dialog modal-lg" role="document">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-plus me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                            <path d="M12 5l0 14" />
-                            <path d="M5 12l14 0" />
-                        </svg>
-                        Add New Campaign
-                    </h5>
+                    <h5 class="modal-title">Add New Campaign</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <form id="add-campaign-form">
@@ -246,7 +183,7 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Base URL</label>
-                            <input type="text" id="base_url" name="base_url" class="form-control" required>
+                            <input type="url" name="base_url" class="form-control" required>
                             <span class="error-message" style="color: red;"></span>
                         </div>
                         <div class="mb-3">
@@ -260,21 +197,8 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-link link-secondary" data-bs-dismiss="modal">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-x me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                                <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                                <path d="M18 6l-12 12" />
-                                <path d="M6 6l12 12" />
-                            </svg>
-                            Cancel
-                        </button>
-                        <button type="submit" class="btn btn-primary ms-auto">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-check me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                                <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                                <path d="M5 12l5 5l10 -10" />
-                            </svg>
-                            Create Campaign
-                        </button>
+                        <button type="button" class="btn btn-link link-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary ms-auto">Create Campaign</button>
                     </div>
                 </form>
             </div>
@@ -286,15 +210,7 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
         <div class="modal-dialog modal-lg" role="document">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-edit me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                            <path d="M7 7h-1a2 2 0 0 0 -2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2 -2v-1" />
-                            <path d="M20.385 6.585a2.1 2.1 0 0 0 -2.97 -2.97l-8.415 8.385v3h3l8.385 -8.415z" />
-                            <path d="M16 5l3 3" />
-                        </svg>
-                        Edit Campaign
-                    </h5>
+                    <h5 class="modal-title">Edit Campaign</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <form id="edit-campaign-form">
@@ -318,21 +234,8 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-link link-secondary" data-bs-dismiss="modal">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-x me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                                <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                                <path d="M18 6l-12 12" />
-                                <path d="M6 6l12 12" />
-                            </svg>
-                            Cancel
-                        </button>
-                        <button type="submit" class="btn btn-primary ms-auto">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-check me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                                <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                                <path d="M5 12l5 5l10 -10" />
-                            </svg>
-                            Update Campaign
-                        </button>
+                        <button type="button" class="btn btn-link link-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary ms-auto">Update Campaign</button>
                     </div>
                 </form>
             </div>
@@ -343,7 +246,6 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="../includes/genralfunc.js"></script>
     <script>
         $(document).ready(function() {
 
@@ -360,11 +262,7 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
             let csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute("content");
 
             $('#add-campaign-form').on('submit', function(e) {
-
                 e.preventDefault();
-
-                sanitizeURL('#base_url');
-
                 $.ajax({
                     url: 'campaign_management_crud.php',
                     type: 'POST',
@@ -500,113 +398,65 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
             // Helper function to create campaign card HTML
             function createCampaignCard(campaign) {
                 return `
-    <div class="col-md-6 col-lg-4">
-        <div class="card">
-            <div class="card-header">
-                <h3 class="card-title">${escapeHtml(campaign.name)}</h3>
-            </div>
-            <div class="card-body">
-                <p>
-                    <strong>
-                        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-link me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                            <path d="M10 14a3.5 3.5 0 0 0 5 0l4 -4a3.5 3.5 0 0 0 -5 -5l-.5 .5" />
-                            <path d="M14 10a3.5 3.5 0 0 0 -5 0l-4 4a3.5 3.5 0 0 0 5 5l.5 -.5" />
-                        </svg>
-                        Base URL:
-                    </strong>
-                    ${escapeHtml(campaign.base_url)}
-                </p>
-                <p>
-                    <strong>
-                        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-clock me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                            <circle cx="12" cy="12" r="9" />
-                            <path d="M12 7v5l3 3" />
-                        </svg>
-                        Verification:
-                    </strong>
-                    <span class="verification-frequency">${escapeHtml(capitalizeFirstLetter(campaign.verification_frequency) )}</span>
-                </p>
-                <div class="mt-3">
-                    <div class="row g-2 align-items-center">
-                        <div class="col">
-                            <div class="text-muted">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-chart-bar me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                                    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                                    <path d="M3 12h4v8h-4z" />
-                                    <path d="M10 8h4v12h-4z" />
-                                    <path d="M17 4h4v16h-4z" />
-                                    <path d="M3 20h18" />
-                                </svg>
-                                Backlinks Status
+                <div class="col-md-6 col-lg-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">${escapeHtml(campaign.name)}</h3>
+                        </div>
+                        <div class="card-body">
+                            <p><strong>Base URL:</strong> ${escapeHtml(campaign.base_url)}</p>
+                            <p><strong>Verification:</strong> <span class="verification-frequency">${escapeHtml(capitalizeFirstLetter(campaign.verification_frequency) )}</span></p>
+                            <div class="mt-3">
+                                <div class="row g-2 align-items-center">
+                                    <div class="col">
+                                        <div class="text-muted">Backlinks Status</div>
+                                        <div class="progress progress-separated mb-3">
+                                            <!-- Progress bars will be updated dynamically -->
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-auto d-flex align-items-center pe-2">
+                                                <span class="legend me-2 bg-success"></span>
+                                                <span>Alive (<span class="alive-count">${campaign.alive_backlinks || 0}</span>)</span>
+                                            </div>
+                                            <div class="col-auto d-flex align-items-center px-2">
+                                                <span class="legend me-2 bg-danger"></span>
+                                                <span>Dead (<span class="dead-count">${campaign.dead_backlinks || 0}</span>)</span>
+                                            </div>
+                                            <div class="col-auto d-flex align-items-center ps-2">
+                                                <span class="legend me-2 bg-warning"></span>
+                                                <span>Pending (<span class="pending-count">${campaign.pending_backlinks || 0}</span>)</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="progress progress-separated mb-3">
-                                <!-- Progress bars will be updated dynamically -->
-                            </div>
-                            <div class="row">
-                                <div class="col-auto d-flex align-items-center pe-2">
-                                    <span class="legend me-2 bg-success"></span>
-                                    <span>Alive (<span class="alive-count">${campaign.alive_backlinks || 0}</span>)</span>
-                                </div>
-                                <div class="col-auto d-flex align-items-center px-2">
-                                    <span class="legend me-2 bg-danger"></span>
-                                    <span>Dead (<span class="dead-count">${campaign.dead_backlinks || 0}</span>)</span>
-                                </div>
-                                <div class="col-auto d-flex align-items-center ps-2">
-                                    <span class="legend me-2 bg-warning"></span>
-                                    <span>Pending (<span class="pending-count">${campaign.pending_backlinks || 0}</span>)</span>
-                                </div>
+                        </div>
+                        <div class="card-footer">
+                            <div class="btn-list">
+                                <a href="backlink_management.php?campaign_id=${campaign.id}&csrf_token=${window.csrfToken}" class="btn btn-primary">
+                                    Manage Backlinks
+                                </a>
+                                <button type="button" class="btn btn-ghost-warning edit-campaign-btn" 
+                                    data-campaign-id="${campaign.id}"
+                                    data-campaign-name="${escapeHtml(campaign.name)}"
+                                    data-verification-frequency="${escapeHtml( campaign.verification_frequency)}"
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#edit-campaign-modal">
+                                    Edit
+                                </button>
+                                <form class="delete-campaign-form d-inline">
+                                    <input type="hidden" name="csrf_token" value="${window.csrfToken}">
+                                    <input type="hidden" name="action" value="delete_campaign">
+                                    <input type="hidden" name="campaign_id" value="${campaign.id}">
+                                    <button type="submit" class="btn btn-ghost-danger">
+                                        Delete
+                                    </button>
+                                </form>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
-            <div class="card-footer">
-                <div class="btn-list">
-                    <a href="backlink_management.php?campaign_id=${campaign.id}&csrf_token=${window.csrfToken}" class="btn btn-primary">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-link me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                            <path d="M10 14a3.5 3.5 0 0 0 5 0l4 -4a3.5 3.5 0 0 0 -5 -5l-.5 .5" />
-                            <path d="M14 10a3.5 3.5 0 0 0 -5 0l-4 4a3.5 3.5 0 0 0 5 5l.5 -.5" />
-                        </svg>
-                        Manage Backlinks
-                    </a>
-                    <button type="button" class="btn btn-ghost-warning edit-campaign-btn"
-                        data-campaign-id="${campaign.id}"
-                        data-campaign-name="${escapeHtml(campaign.name)}"
-                        data-verification-frequency="${escapeHtml( campaign.verification_frequency)}"
-                        data-bs-toggle="modal"
-                        data-bs-target="#edit-campaign-modal">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-edit me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                            <path d="M7 7h-1a2 2 0 0 0 -2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2 -2v-1" />
-                            <path d="M20.385 6.585a2.1 2.1 0 0 0 -2.97 -2.97l-8.415 8.385v3h3l8.385 -8.415z" />
-                            <path d="M16 5l3 3" />
-                        </svg>
-                        Edit
-                    </button>
-                    <form class="delete-campaign-form d-inline">
-                        <input type="hidden" name="csrf_token" value="${window.csrfToken}">
-                        <input type="hidden" name="action" value="delete_campaign">
-                        <input type="hidden" name="campaign_id" value="${campaign.id}">
-                        <button type="submit" class="btn btn-ghost-danger">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-trash me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                                <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                                <path d="M4 7h16" />
-                                <path d="M10 11v6" />
-                                <path d="M14 11v6" />
-                                <path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" />
-                                <path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" />
-                            </svg>
-                            Delete
-                        </button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-    `;
+            `;
             }
 
             // Helper function to update campaign card
