@@ -250,7 +250,7 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                                 </svg>
                                                 Edit
                                             </button>
-                                            <form class="delete-campaign-form" style="display:inline;" method="POST">
+                                            <form class="delete-campaign-form" style="display:inline;">
                                                 <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                                                 <input type="hidden" name="action" value="delete_campaign">
                                                 <input type="hidden" name="campaign_id" value="<?= $campaign['id'] ?>">
@@ -479,8 +479,8 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 });
             });
 
-            // Handle delete form submission with event delegation
-            $(document).on('submit', '.delete-campaign-form', function(e) {
+            // Handle delete form submission
+            $('.delete-campaign-form').on('submit', function(e) {
                 e.preventDefault();
                 const form = $(this);
                 const campaignCard = form.closest('.col-md-6');
@@ -660,8 +660,6 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             // Helper function to create campaign card HTML
             function createCampaignCard(campaign) {
-                // Get the current CSRF token from the meta tag
-                const currentCsrfToken = $("meta[name='csrf-token']").attr("content");
                 return `
     <div class="col-md-6 col-lg-4 campaign-card" data-name="${escapeHtml(campaign.name.toLowerCase())}" data-base-url="${escapeHtml(campaign.base_url.toLowerCase())}" data-status="${campaign.status}" data-created-at="${campaign.created_at}">
         <div class="card">
@@ -732,7 +730,7 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
             </div>
             <div class="card-footer">
                 <div class="btn-list">
-                    <a href="backlink_management.php?campaign_id=${campaign.id}&csrf_token=${currentCsrfToken}" class="btn btn-primary">
+                    <a href="backlink_management.php?campaign_id=${campaign.id}&csrf_token=${window.csrfToken}" class="btn btn-primary">
                         <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-link me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
                             <path stroke="none" d="M0 0h24v24H0z" fill="none" />
                             <path d="M10 14a3.5 3.5 0 0 0 5 0l4 -4a3.5 3.5 0 0 0 -5 -5l-.5 .5" />
@@ -755,8 +753,8 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         </svg>
                         Edit
                     </button>
-                    <form class="delete-campaign-form d-inline" method="POST">
-                        <input type="hidden" name="csrf_token" value="${currentCsrfToken}">
+                    <form class="delete-campaign-form d-inline">
+                        <input type="hidden" name="csrf_token" value="${window.csrfToken}">
                         <input type="hidden" name="action" value="delete_campaign">
                         <input type="hidden" name="campaign_id" value="${campaign.id}">
                         <button type="submit" class="btn btn-ghost-danger">

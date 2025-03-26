@@ -1,4 +1,6 @@
 <?php
+
+
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
@@ -7,6 +9,7 @@ error_reporting(E_ALL);
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../config/proxies.json';
+require_once __DIR__ . '/../config/ProxyManager.php';
 class BacklinkVerifier
 {
     // Updated to mimic a real browser user agent (rotates randomly)
@@ -39,7 +42,6 @@ class BacklinkVerifier
                 echo "No backlinks to verify.\n";
                 return;
             }
-
             $results = $this->verifyBacklinks($backlinks);
             //var_dump($results);
             $this->processVerificationResults($results);
@@ -156,7 +158,6 @@ class BacklinkVerifier
 
             $curlHandles[$index] = $ch;
         }
-
         return $curlHandles;
     }
 
@@ -171,7 +172,7 @@ class BacklinkVerifier
             if ($running) {
                 curl_multi_select($multiHandle);
                 // Add small random delay to mimic human behavior
-                usleep(rand(100000, 500000)); // 0.1 to 0.5 seconds
+                //usleep(rand(100000, 500000)); // 0.1 to 0.5 seconds
             }
         } while ($running > 0 && $status === CURLM_OK);
 

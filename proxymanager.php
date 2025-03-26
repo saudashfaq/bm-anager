@@ -2,6 +2,13 @@
 require_once __DIR__ . '/middleware.php';
 require_once __DIR__ . '/config/ProxyManager.php';
 
+
+//TODO: do the real time testing of proxymanager.php
+//TODO: Implement emails and notifications
+
+
+
+
 // Initialize ProxyManager
 $proxyManager = new ProxyManager();
 
@@ -11,7 +18,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_proxy'])) {
         die('CSRF validation failed');
     }
 
-    $ip = filter_input(INPUT_POST, 'ip', FILTER_VALIDATE_IP);
+    $ipOrHost = filter_input(INPUT_POST, 'ip', FILTER_UNSAFE_RAW);
+
+    // Validate if it's an IP or a valid hostname
+    if (filter_var($ipOrHost, FILTER_VALIDATE_IP) || filter_var($ipOrHost, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME)) {
+        // Valid IP or Hostname
+        echo "Valid input: " . htmlspecialchars($ipOrHost);
+    } else {
+        // Invalid input
+        echo "Invalid IP or Hostname.";
+    }
+    $ip = $ipOrHost;
+
     $port = filter_input(INPUT_POST, 'port', FILTER_VALIDATE_INT);
     $username = trim($_POST['username'] ?? '');
     $password = trim($_POST['password'] ?? '');
@@ -20,6 +38,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_proxy'])) {
         $proxyManager->addProxy($ip, $port, $username, $password);
         header('Location: ' . $_SERVER['PHP_SELF']);
         exit;
+    } else {
+        print_r($ip);
     }
 }
 
@@ -94,7 +114,7 @@ $proxies = json_decode(file_get_contents(__DIR__ . '/config/proxies.json'), true
                                     IP Address
                                 </label>
                                 <input type="text" class="form-control" name="ip" required
-                                    placeholder="192.168.1.1" pattern="\d+\.\d+\.\d+\.\d+">
+                                    placeholder="192.168.1.1" value="proxy.geonode.io"> <!-- pattern="\d+\.\d+\.\d+\.\d+" -->
                             </div>
                             <div class="col-md-2 mb-3">
                                 <label class="form-label">
@@ -108,7 +128,7 @@ $proxies = json_decode(file_get_contents(__DIR__ . '/config/proxies.json'), true
                                     Port
                                 </label>
                                 <input type="number" class="form-control" name="port" required
-                                    min="1" max="65535" placeholder="8080">
+                                    min="1" max="65535" placeholder="8080" value="9000">
                             </div>
                             <div class="col-md-3 mb-3">
                                 <label class="form-label">
@@ -120,7 +140,7 @@ $proxies = json_decode(file_get_contents(__DIR__ . '/config/proxies.json'), true
                                     Username (optional)
                                 </label>
                                 <input type="text" class="form-control" name="username"
-                                    placeholder="Username">
+                                    placeholder="Username" value="geonode_MPNHllDs0x-type-residential">
                             </div>
                             <div class="col-md-3 mb-3">
                                 <label class="form-label">
@@ -133,7 +153,7 @@ $proxies = json_decode(file_get_contents(__DIR__ . '/config/proxies.json'), true
                                     Password (optional)
                                 </label>
                                 <input type="text" class="form-control" name="password"
-                                    placeholder="Password">
+                                    placeholder="Password" value="14060fc6-a288-4956-b0f6-eb78591b795c">
                             </div>
                             <div class="col-md-1 mb-3 d-flex align-items-end">
                                 <button type="submit" class="btn btn-primary w-100">

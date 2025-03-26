@@ -1,1 +1,37 @@
-[]
+[
+    {
+        "ip": "124.0.0.1",
+        "port": 8080,
+        "username": "three",
+        "password": "pass",
+        "usage": {
+            "": 2,
+            "https:\/\/abcd.com": 0
+        },
+        "last_used": "2025-03-24 15:47:18"
+    },
+    {
+        "ip": "proxy.geonode.io",
+        "port": 9000,
+        "username": "geonode_MPNHllDs0x-type-residential",
+        "password": "14060fc6-a288-4956-b0f6-eb78591b795c",
+        "usage": [],
+        "last_used": null
+    },
+    {
+        "ip": "proxy.geonode.io",
+        "port": 9000,
+        "username": "geonode_MPNHllDs0x-type-residential",
+        "password": "14060fc6-a288-4956-b0f6-eb78591b795c",
+        "usage": [],
+        "last_used": null
+    },
+    {
+        "ip": "proxy.geonode.io",
+        "port": 9000,
+        "username": "geonode_MPNHllDs0x-type-residential",
+        "password": "14060fc6-a288-4956-b0f6-eb78591b795c",
+        "usage": [],
+        "last_used": null
+    }
+]

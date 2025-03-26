@@ -1,4 +1,7 @@
 <?php
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 
 class ProxyManager
 {
@@ -26,6 +29,8 @@ class ProxyManager
     {
         if (file_put_contents(self::PROXY_FILE, json_encode($this->proxies, JSON_PRETTY_PRINT)) === false) {
             error_log("Failed to write to " . self::PROXY_FILE);
+            echo "Failed to write to " . self::PROXY_FILE;
+            die('stopped');
         }
     }
     public function getLeastUsedProxy(string $baseUrl): array
@@ -74,6 +79,7 @@ class ProxyManager
             'usage' => [],
             'last_used' => null
         ];
+        print_r($this->proxies);
         $this->saveProxies();
     }
 
@@ -90,7 +96,7 @@ class ProxyManager
 }
 
 // Example initialization (you can modify this part)
-$proxyManager = new ProxyManager();
+//$proxyManager = new ProxyManager();
 // Uncomment and add your proxies
 // $proxyManager->addProxy('192.168.1.1', 8080, 'user', 'pass');
 // $proxyManager->addProxy('10.0.0.1', 3128);
