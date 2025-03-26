@@ -214,7 +214,7 @@ try {
                 </div>
                 <div class="welcome-message mt-4">
                     <p>You have campaigns, but no backlinks yet! Add backlinks to start tracking their status.</p>
-                    <a href="<?= BASE_URL ?>campaigns/backlink_management.php" class="btn btn-primary">Add Backlinks</a>
+                    <a href="<?= BASE_URL ?>campaigns/campaign_management.php" class="btn btn-primary">Add Backlinks</a>
                 </div>
             <?php else: ?>
                 <div class="row">
