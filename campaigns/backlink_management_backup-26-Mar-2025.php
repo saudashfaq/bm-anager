@@ -3,95 +3,56 @@ require_once __DIR__ . '/../middleware.php';
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../config/Pagination.php';
 
-// Ensure campaign_id is set and is a valid integer
-if (empty($_GET['campaign_id']) || !ctype_digit($_GET['campaign_id'])) {
+if (empty($_GET['campaign_id']) || !is_numeric($_GET['campaign_id'])) {
     header('HTTP/1.1 403 Forbidden');
     exit('Access denied');
 }
 
 try {
+    $stmt = $pdo->prepare("SELECT id, `name` FROM campaigns");
+    $stmt->execute();
+    $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    $campaignId = (int) $_GET['campaign_id']; // Convert to integer for security
-    // Fetch campaign details in a single query (optimized)
-    $stmt = $pdo->prepare("SELECT id, `name`, base_url FROM campaigns WHERE id = ? LIMIT 1");
-    $stmt->execute([$campaignId]);
-    $campaignData = $stmt->fetch(PDO::FETCH_ASSOC);
+    $campaignId = $_GET['campaign_id'];
+    $campaignExists = false;
 
-    if ($campaignData) {
-        $campaignExists = true;
-        $base_url = $campaignData['base_url'] ?? '';
-    } else {
+    foreach ($campaigns as $campaign) {
+        if ($campaign['id'] == $campaignId) {
+            $campaignExists = true;
+            break;
+        }
+    }
+
+    if (!$campaignExists) {
         header('Location:' . BASE_URL . 'campaigns/campaign_management.php?error=Campaign not found');
         exit();
     }
-
-
-    $query = "SELECT 
-    COUNT(*) AS total_backlinks,
-    SUM(CASE WHEN status = 'alive' THEN 1 ELSE 0 END) AS alive_backlinks,
-    SUM(CASE WHEN status = 'dead' THEN 1 ELSE 0 END) AS dead_backlinks,
-    SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS pending_backlinks,
-    SUM(CASE WHEN is_duplicate = 'yes' THEN 1 ELSE 0 END) AS duplicate_backlinks
-    FROM backlinks where campaign_id = :campaign_id";
-
-    $stmt = $pdo->prepare($query);
-    $stmt->execute(['campaign_id' => $campaignId]);
-    $result = $stmt->fetch();
-
-    $totalBacklinks = $result['total_backlinks'];
-    $activeBacklinks = $result['alive_backlinks'];
-    $deadBacklinks = $result['dead_backlinks'];
-    $duplicateBacklinks = $result['duplicate_backlinks'];
 
     // Pagination setup
     $itemsPerPage = 10; // Number of backlinks per page
     $currentPage = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1;
 
-    // Apply filters from query parameters
-    $filterType = isset($_GET['filter_type']) ? $_GET['filter_type'] : null;
-    $filterValue = isset($_GET['filter_value']) ? $_GET['filter_value'] : null;
-
-    // Get total number of backlinks for the campaign (considering filters)
+    // Get total number of backlinks for the campaign
     $countQuery = "SELECT COUNT(*) FROM backlinks WHERE campaign_id = :campaign_id";
-    $countParams = ['campaign_id' => $campaignId];
-    if ($filterType === 'status' && in_array($filterValue, ['alive', 'dead'])) {
-        $countQuery .= " AND status = :status";
-        $countParams['status'] = $filterValue;
-    } elseif ($filterType === 'duplicate' && $filterValue === 'yes') {
-        $countQuery .= " AND is_duplicate = :is_duplicate";
-        $countParams['is_duplicate'] = 'yes';
-    }
     $countStmt = $pdo->prepare($countQuery);
-    $countStmt->execute($countParams);
-    $totalFilteredBacklinks = $countStmt->fetchColumn();
+    $countStmt->execute(['campaign_id' => $campaignId]);
+    $totalBacklinks = $countStmt->fetchColumn();
 
     // Initialize Pagination class
-    $pagination = new Pagination($totalFilteredBacklinks, $itemsPerPage, $currentPage, '');
+    $pagination = new Pagination($totalBacklinks, $itemsPerPage, $currentPage, '');
 
-    // Fetch backlinks with pagination and filters
+    // Fetch backlinks with pagination
     $offset = $pagination->getOffset();
     $backlinkQuery = "SELECT b.*, c.name AS campaign_name, c.base_url, 
         u.username AS created_by_username FROM backlinks b 
         JOIN campaigns c ON b.campaign_id = c.id
         JOIN users u ON b.created_by = u.id
-        WHERE (b.campaign_id = :campaign_id)";
-    $params = ['campaign_id' => $campaignId];
-    if ($filterType === 'status' && in_array($filterValue, ['alive', 'dead'])) {
-        $backlinkQuery .= " AND b.status = :status";
-        $params['status'] = $filterValue;
-    } elseif ($filterType === 'duplicate' && $filterValue === 'yes') {
-        $backlinkQuery .= " AND b.is_duplicate = :is_duplicate";
-        $params['is_duplicate'] = 'yes';
-    }
-    $backlinkQuery .= " ORDER BY b.created_at DESC LIMIT :limit OFFSET :offset";
+        WHERE (b.campaign_id = :campaign_id)
+        ORDER BY b.created_at DESC
+        LIMIT :limit OFFSET :offset";
 
     $stmt = $pdo->prepare($backlinkQuery);
     $stmt->bindValue(':campaign_id', $campaignId, PDO::PARAM_INT);
-    if ($filterType === 'status' && in_array($filterValue, ['alive', 'dead'])) {
-        $stmt->bindValue(':status', $filterValue, PDO::PARAM_STR);
-    } elseif ($filterType === 'duplicate' && $filterValue === 'yes') {
-        $stmt->bindValue(':is_duplicate', 'yes', PDO::PARAM_STR);
-    }
     $stmt->bindValue(':limit', $itemsPerPage, PDO::PARAM_INT);
     $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
     $stmt->execute();
@@ -100,11 +61,6 @@ try {
     error_log("Database error: " . $e->getMessage());
     die('Database error occurred');
 }
-
-$stmt = $pdo->prepare("SELECT id, `name` FROM campaigns");
-$stmt->execute();
-$campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
 ?>
 
 <!DOCTYPE html>
@@ -162,27 +118,6 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         .table-hover tbody tr:hover {
             background-color: rgba(0, 0, 0, 0.035);
-        }
-
-        .stat-link {
-            cursor: pointer;
-            text-decoration: none;
-            color: inherit;
-        }
-
-        .stat-link:hover {
-            opacity: 0.8;
-        }
-
-        .duplicate-icon {
-            color: #f1c40f;
-            margin-right: 5px;
-        }
-
-        /* Highlight style for active stat box */
-        .stat-link.active .card {
-            border: 2px solid #206bc4;
-            background-color: #e6f0fa;
         }
     </style>
 </head>
@@ -242,79 +177,57 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                     </svg>
                                     Bulk Upload
                                 </a>
+
                             </div>
                         </div>
                         <div class="row g-3 mt-2 stats-container">
-                            <div class="col-md-3">
-                                <a href="?campaign_id=<?= $campaignId ?>&filter_type=&filter_value=" class="stat-link" data-filter-type="" data-filter-value="">
-                                    <div class="card">
-                                        <div class="card-body p-3">
-                                            <div class="subheader">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-list me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                                                    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                                                    <path d="M9 6h11" />
-                                                    <path d="M9 12h11" />
-                                                    <path d="M9 18h11" />
-                                                    <path d="M5 6v.01" />
-                                                    <path d="M5 12v.01" />
-                                                    <path d="M5 18v.01" />
-                                                </svg>
-                                                Total Backlinks
-                                            </div>
-                                            <div class="h1 mb-0 mt-2"><?= $totalBacklinks ?></div>
+                            <div class="col-md-4">
+                                <div class="card">
+                                    <div class="card-body p-3">
+                                        <div class="subheader">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-list me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                                <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                                                <path d="M9 6h11" />
+                                                <path d="M9 12h11" />
+                                                <path d="M9 18h11" />
+                                                <path d="M5 6v.01" />
+                                                <path d="M5 12v.01" />
+                                                <path d="M5 18v.01" />
+                                            </svg>
+                                            Total Backlinks
                                         </div>
+                                        <div class="h1 mb-0 mt-2">1</div>
                                     </div>
-                                </a>
+                                </div>
                             </div>
-                            <div class="col-md-3">
-                                <a href="?campaign_id=<?= $campaignId ?>&filter_type=status&filter_value=alive" class="stat-link" data-filter-type="status" data-filter-value="alive">
-                                    <div class="card">
-                                        <div class="card-body p-3">
-                                            <div class="subheader">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-check me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                                                    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                                                    <path d="M5 12l5 5l10 -10" />
-                                                </svg>
-                                                Active Backlinks
-                                            </div>
-                                            <div class="h1 mb-0 mt-2"><?= $activeBacklinks ?></div>
+                            <div class="col-md-4">
+                                <div class="card">
+                                    <div class="card-body p-3">
+                                        <div class="subheader">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-check me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                                <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                                                <path d="M5 12l5 5l10 -10" />
+                                            </svg>
+                                            Active Backlinks
                                         </div>
+                                        <div class="h1 mb-0 mt-2">1</div>
                                     </div>
-                                </a>
+                                </div>
                             </div>
-                            <div class="col-md-3">
-                                <a href="?campaign_id=<?= $campaignId ?>&filter_type=status&filter_value=dead" class="stat-link" data-filter-type="status" data-filter-value="dead">
-                                    <div class="card">
-                                        <div class="card-body p-3">
-                                            <div class="subheader">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-x me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                                                    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                                                    <path d="M18 6l-12 12" />
-                                                    <path d="M6 6l12 12" />
-                                                </svg>
-                                                Dead Backlinks
-                                            </div>
-                                            <div class="h1 mb-0 mt-2"><?= $deadBacklinks ?></div>
+                            <div class="col-md-4">
+                                <div class="card">
+                                    <div class="card-body p-3">
+                                        <div class="subheader">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-x me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                                <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                                                <path d="M18 6l-12 12" />
+                                                <path d="M6 6l12 12" />
+                                            </svg>
+                                            Dead Backlinks
                                         </div>
+                                        <div class="h1 mb-0 mt-2">1</div>
                                     </div>
-                                </a>
-                            </div>
-                            <div class="col-md-3">
-                                <a href="?campaign_id=<?= $campaignId ?>&filter_type=duplicate&filter_value=yes" class="stat-link" data-filter-type="duplicate" data-filter-value="yes">
-                                    <div class="card">
-                                        <div class="card-body p-3">
-                                            <div class="subheader">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-copy me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                                                    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                                                    <path d="M8 8m0 2a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2z" />
-                                                    <path d="M16 8v-2a2 2 0 0 0 -2 -2h-8a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h2" />
-                                                </svg>
-                                                Duplicate Backlinks
-                                            </div>
-                                            <div class="h1 mb-0 mt-2"><?= $duplicateBacklinks ?></div>
-                                        </div>
-                                    </div>
-                                </a>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -340,9 +253,9 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         </div>
                         <form id="add-backlink-form" action="backlink_management_crud.php" method="post">
                             <div class="modal-body">
-                                <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
-                                <input type="hidden" name="campaign_id" id="hidden-campaign-id" value="<?= !empty($campaignId) ? $campaignId : '' ?>">
-                                <input type="hidden" name="campaign_base_url" id="hidden-campaign-url" value="<?= !empty($base_url) ? $base_url : '' ?>">
+                                <input type="hidden" name="csrf_token" value="<?= $csrfToken ?>">
+                                <input type="hidden" name="campaign_id" id="hidden-campaign-id">
+                                <input type="hidden" name="campaign_base_url" id="hidden-campaign-url">
                                 <div class="mb-3">
                                     <label class="form-label required">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-link me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
@@ -374,7 +287,7 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                     <label class="form-label">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-anchor me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
                                             <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                                            <path d="M12 21v-9m-3 0h6m-6 0a2 2 0 1 1 -4 0a2 2 0 1 1 4 0" />
+                                            <path d="M12 21v-9m-3 0h6m-6 0a2 2 0 1 1 -4 0a2 2 0 0 1 4 0" />
                                             <path d="M4 8v-2a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v2" />
                                             <path d="M4 16l8 5l8 -5" />
                                         </svg>
@@ -445,7 +358,7 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                     <th>
                                         <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-anchor me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
                                             <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                                            <path d="M12 21v-9m-3 0h6m-6 0a2 2 0 1 1 -4 0a2 2 0 1 1 4 0" />
+                                            <path d="M12 21v-9m-3 0h6m-6 0a2 2 0 1 1 -4 0a2 2 0 0 1 4 0" />
                                             <path d="M4 8v-2a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v2" />
                                             <path d="M4 16l8 5l8 -5" />
                                         </svg>
@@ -497,16 +410,7 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 <?php foreach ($backlinks as $backlink): ?>
                                     <tr data-id="<?= htmlspecialchars($backlink['id']) ?>">
                                         <td><input type="checkbox" class="backlink-select" value="<?= htmlspecialchars($backlink['id']) ?>"></td>
-                                        <td>
-                                            <?php if ($backlink['is_duplicate'] === 'yes'): ?>
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-copy duplicate-icon" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                                                    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                                                    <path d="M8 8m0 2a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2z" />
-                                                    <path d="M16 8v-2a2 2 0 0 0 -2 -2h-8a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h2" />
-                                                </svg>
-                                            <?php endif; ?>
-                                            <?= htmlspecialchars($backlink['backlink_url']) ?>
-                                        </td>
+                                        <td><?= htmlspecialchars($backlink['backlink_url']) ?></td>
                                         <td><?= htmlspecialchars($backlink['anchor_text']) ?></td>
                                         <td><?= htmlspecialchars($backlink['target_url']) ?></td>
                                         <td><span class="badge bg-<?= match ($backlink['status']) {
@@ -574,19 +478,10 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     $('#bulk-upload-link').attr('href', 'bulk_upload_backlinks.php?campaign_id=' + campaignId);
                 }
 
-                // Reset filters and update URL when changing campaign
-                const newUrl = new URL(window.location.href);
-                newUrl.searchParams.set('campaign_id', campaignId);
-                newUrl.searchParams.delete('filter_type');
-                newUrl.searchParams.delete('filter_value');
-                newUrl.searchParams.delete('page');
-                window.history.pushState({}, '', newUrl);
-
-                // Load backlinks with no filters
-                loadBacklinks(campaignId, 1, '', '');
+                loadBacklinks(campaignId, 1); // Load first page by default
             });
 
-            function loadBacklinks(campaignId, page, filterType = '', filterValue = '') {
+            function loadBacklinks(campaignId, page) {
                 $('.loading').show();
                 $('.campaign-info').hide();
 
@@ -597,8 +492,6 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     data: {
                         campaign_id: campaignId,
                         page: page,
-                        filter_type: filterType,
-                        filter_value: filterValue,
                         csrf_token: csrfToken
                     },
                     success: function(data) {
@@ -611,9 +504,6 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         // Update pagination
                         $('.pagination').remove();
                         $('.backlinks-card-body').append(data.pagination);
-
-                        // Highlight the active stat box
-                        highlightActiveStatBox(filterType, filterValue);
                     },
                     error: function(xhr) {
                         console.error('Error:', xhr.responseText);
@@ -622,117 +512,68 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 });
             }
 
-            // Function to highlight the active stat box
-            function highlightActiveStatBox(filterType, filterValue) {
-                // Remove active class from all stat boxes
-                $('.stat-link').removeClass('active');
-
-                // Find and highlight the matching stat box
-                $('.stat-link').each(function() {
-                    const statFilterType = $(this).data('filter-type') || '';
-                    const statFilterValue = $(this).data('filter-value') || '';
-                    if (statFilterType === filterType && statFilterValue === filterValue) {
-                        $(this).addClass('active');
-                    }
-                });
-            }
-
-            // Load initial backlinks based on URL parameters
-            const urlParams = new URLSearchParams(window.location.search);
-            const initialCampaignId = $('#campaign-select').val();
-            const initialFilterType = urlParams.get('filter_type') || '';
-            const initialFilterValue = urlParams.get('filter_value') || '';
-            const initialPage = urlParams.get('page') || 1;
-
-            if (initialCampaignId) {
-                loadBacklinks(initialCampaignId, initialPage, initialFilterType, initialFilterValue);
-                $('.campaign-details').show();
+            const selectedCampaignId = $('#campaign-select').val();
+            if (selectedCampaignId) {
+                $('#campaign-select').trigger('change');
             }
 
             function updateCampaignDetails(data) {
                 $('.campaign-name').text(data.campaign.name);
                 $('.campaign-base-url').text(data.campaign.base_url);
+                // Calculate stats based on the current page backlinks
+                const backlinks = data.backlinks || [];
+                const totalBacklinks = backlinks.length;
+                const activeBacklinks = backlinks.filter(bl => bl.status === 'alive').length;
+                const deadBacklinks = backlinks.filter(bl => bl.status === 'dead').length;
+
                 const statsHtml = `
-                    <div class="col-md-3">
-                        <a href="?campaign_id=${data.campaign.id}&filter_type=&filter_value=" class="stat-link" data-filter-type="" data-filter-value="">
-                            <div class="card"><div class="card-body p-3">
-                                <div class="subheader">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-list-check me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                                        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                                        <path d="M3.5 5.5l1.5 1.5l2.5 -2.5" />
-                                        <path d="M3.5 11.5l1.5 1.5l2.5 -2.5" />
-                                        <path d="M3.5 17.5l1.5 1.5l2.5 -2.5" />
-                                        <path d="M11 6h9" />
-                                        <path d="M11 12h9" />
-                                        <path d="M11 18h9" />
-                                    </svg>
-                                    Total Backlinks
-                                </div>
-                                <div class="h1 mb-0 mt-2">${data.stats.total}</div>
-                            </div></div>
-                        </a>
-                    </div>
-                    <div class="col-md-3">
-                        <a href="?campaign_id=${data.campaign.id}&filter_type=status&filter_value=alive" class="stat-link" data-filter-type="status" data-filter-value="alive">
-                            <div class="card"><div class="card-body p-3">
-                                <div class="subheader">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-check-circle me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                                        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                                        <path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" />
-                                        <path d="M9 12l2 2l4 -4" />
-                                    </svg>
-                                    Active Backlinks
-                                </div>
-                                <div class="h1 mb-0 mt-2">${data.stats.active}</div>
-                            </div></div>
-                        </a>
-                    </div>
-                    <div class="col-md-3">
-                        <a href="?campaign_id=${data.campaign.id}&filter_type=status&filter_value=dead" class="stat-link" data-filter-type="status" data-filter-value="dead">
-                            <div class="card"><div class="card-body p-3">
-                                <div class="subheader">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-alert-triangle me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                                        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                                        <path d="M12 9v2m0 4v.01" />
-                                        <path d="M5 19h14a2 2 0 0 0 1.84 -2.75l-7.1 -12.25a2 2 0 0 0 -3.48 0l-7.1 12.25a2 2 0 0 0 1.84 2.75z" />
-                                    </svg>
-                                    Dead Backlinks
-                                </div>
-                                <div class="h1 mb-0 mt-2">${data.stats.dead}</div>
-                            </div></div>
-                        </a>
-                    </div>
-                    <div class="col-md-3">
-                        <a href="?campaign_id=${data.campaign.id}&filter_type=duplicate&filter_value=yes" class="stat-link" data-filter-type="duplicate" data-filter-value="yes">
-                            <div class="card"><div class="card-body p-3">
-                                <div class="subheader">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-copy me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                                        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                                        <path d="M8 8m0 2a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2z" />
-                                        <path d="M16 8v-2a2 2 0 0 0 -2 -2h-8a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h2" />
-                                    </svg>
-                                    Duplicate Backlinks
-                                </div>
-                                <div class="h1 mb-0 mt-2">${data.stats.duplicate}</div>
-                            </div></div>
-                        </a>
-                    </div>`;
+                    <div class="col-md-4"><div class="card"><div class="card-body p-3">
+                        <div class="subheader">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-list-check me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                <path d="M3.5 5.5l1.5 1.5l2.5 -2.5" />
+                                <path d="M3.5 11.5l1.5 1.5l2.5 -2.5" />
+                                <path d="M3.5 17.5l1.5 1.5l2.5 -2.5" />
+                                <path d="M11 6h9" />
+                                <path d="M11 12h9" />
+                                <path d="M11 18h9" />
+                            </svg>
+                            Total Backlinks
+                        </div>
+                        <div class="h1 mb-0 mt-2">${totalBacklinks}</div>
+                    </div></div></div>
+                    <div class="col-md-4"><div class="card"><div class="card-body p-3">
+                        <div class="subheader">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-check-circle me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                <path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" />
+                                <path d="M9 12l2 2l4 -4" />
+                            </svg>
+                            Active Backlinks
+                        </div>
+                        <div class="h1 mb-0 mt-2">${activeBacklinks}</div>
+                    </div></div></div>
+                    <div class="col-md-4"><div class="card"><div class="card-body p-3">
+                        <div class="subheader">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-alert-triangle me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                <path d="M12 9v2m0 4v.01" />
+                                <path d="M5 19h14a2 2 0 0 0 1.84 -2.75l-7.1 -12.25a2 2 0 0 0 -3.48 0l-7.1 12.25a2 2 0 0 0 1.84 2.75z" />
+                            </svg>
+                            Dead Backlinks
+                        </div>
+                        <div class="h1 mb-0 mt-2">${deadBacklinks}</div>
+                    </div></div></div>`;
                 $('.stats-container').html(statsHtml);
             }
 
             function updateBacklinksTable(backlinks) {
                 const tbody = $('.table tbody').empty();
                 backlinks.forEach(function(bl) {
-                    const duplicateIcon = bl.is_duplicate === 'yes' ?
-                        '<svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-copy duplicate-icon" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">' +
-                        '<path stroke="none" d="M0 0h24v24H0z" fill="none"/>' +
-                        '<path d="M8 8m0 2a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2z" />' +
-                        '<path d="M16 8v-2a2 2 0 0 0 -2 -2h-8a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h2" />' +
-                        '</svg>' : '';
                     tbody.append(`
                         <tr data-id="${escapeHtml(bl.id)}" >
                             <td><input type="checkbox" class="backlink-select" value="${escapeHtml(bl.id)}"></td>
-                            <td>${duplicateIcon}${escapeHtml(bl.backlink_url)}</td>
+                            <td>${escapeHtml(bl.backlink_url)}</td>
                             <td>${escapeHtml(bl.anchor_text)}</td>
                             <td>${escapeHtml(bl.target_url)}</td>
                             <td><span class="status status-${bl.status === 'alive' ? 'success' : bl.status === 'dead' ? 'danger' : 'warning'}">${escapeHtml(bl.status)}</span></td>
@@ -768,30 +609,6 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     } [m];
                 });
             }
-
-            // Handle stat box clicks
-            $(document).on('click', '.stat-link', function(e) {
-                e.preventDefault();
-                const campaignId = $('#campaign-select').val();
-                const filterType = $(this).data('filter-type') || '';
-                const filterValue = $(this).data('filter-value') || '';
-
-                // Update URL with filter parameters
-                const newUrl = new URL(window.location.href);
-                newUrl.searchParams.set('campaign_id', campaignId);
-                if (filterType) {
-                    newUrl.searchParams.set('filter_type', filterType);
-                    newUrl.searchParams.set('filter_value', filterValue);
-                } else {
-                    newUrl.searchParams.delete('filter_type');
-                    newUrl.searchParams.delete('filter_value');
-                }
-                newUrl.searchParams.delete('page');
-                window.history.pushState({}, '', newUrl);
-
-                // Load backlinks with the selected filter
-                loadBacklinks(campaignId, 1, filterType, filterValue);
-            });
 
             $('#add-backlink-form').on('submit', function(e) {
                 e.preventDefault();
@@ -911,16 +728,8 @@ $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 e.preventDefault();
                 const page = $(this).data('page');
                 const campaignId = $('#campaign-select').val();
-                const urlParams = new URLSearchParams(window.location.search);
-                const filterType = urlParams.get('filter_type') || '';
-                const filterValue = urlParams.get('filter_value') || '';
                 if (page && campaignId) {
-                    // Update URL with new page
-                    const newUrl = new URL(window.location.href);
-                    newUrl.searchParams.set('page', page);
-                    window.history.pushState({}, '', newUrl);
-
-                    loadBacklinks(campaignId, page, filterType, filterValue);
+                    loadBacklinks(campaignId, page);
                 }
             });
         });

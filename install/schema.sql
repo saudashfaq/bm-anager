@@ -24,9 +24,12 @@ CREATE TABLE IF NOT EXISTS backlinks (
     id INT AUTO_INCREMENT PRIMARY KEY,
     campaign_id INT NOT NULL,
     backlink_url VARCHAR(255) NOT NULL,
+    base_domain VARCHAR(255) NULL, --this will hold the base_domain from the backlink_url
     target_url VARCHAR(255) NULL,
     anchor_text VARCHAR(255) NULL,
     `status` ENUM('alive', 'dead', 'pending') NOT NULL DEFAULT 'pending',
+    anchor_text_found BOOLEAN NULL, -- Nullable boolean for anchor text presence
+    is_duplicate ENUM('yes', 'no') NOT NULL DEFAULT 'no',
     created_by INT NOT NULL,
     last_checked TIMESTAMP NULL DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -41,6 +44,17 @@ CREATE TABLE IF NOT EXISTS verification_logs (
     error_message TEXT NULL,
     created_at TIMESTAMP NULL,
     checked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (backlink_id) REFERENCES backlinks(id) ON DELETE CASCADE
+);
+
+CREATE TABLE verification_errors (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    backlink_id INT NOT NULL,
+    proxy_key VARCHAR(255) DEFAULT NULL,
+    error_type ENUM('http', 'proxy', 'dom') NOT NULL,
+    error_message TEXT NOT NULL,
+    attempt INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (backlink_id) REFERENCES backlinks(id) ON DELETE CASCADE
 );
 
