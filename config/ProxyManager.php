@@ -9,10 +9,12 @@ class ProxyManager
     private const VALID_PROXY_TYPES = ['http', 'https', 'socks4', 'socks5'];
     private const MAX_FAILED_ATTEMPTS = 5;
     private $proxies = [];
+    private $proxyIndex = [];
 
     public function __construct()
     {
         $this->loadProxies();
+        $this->buildProxyIndex();
     }
 
     private function loadProxies(): void
@@ -44,6 +46,79 @@ class ProxyManager
     private function generateUniqueId(): string
     {
         return uniqid('proxy_', true);
+    }
+
+    /**
+     * Build an efficient index of proxies for quick lookups
+     */
+    private function buildProxyIndex(): void
+    {
+        $this->proxyIndex = [];
+        foreach ($this->proxies as $proxy) {
+            $key = $this->generateProxyKey($proxy);
+            if (!isset($this->proxyIndex[$key])) {
+                $this->proxyIndex[$key] = [];
+            }
+            $this->proxyIndex[$key][] = $proxy['id'];
+        }
+    }
+
+    /**
+     * Generate a unique key for proxy indexing
+     */
+    private function generateProxyKey(array $proxy): string
+    {
+        return sprintf(
+            '%s:%d:%s:%s',
+            strtolower($proxy['ip']),
+            $proxy['port'],
+            strtolower($proxy['type'] ?? 'http'),
+            $proxy['is_free'] ? '1' : '0'
+        );
+    }
+
+    /**
+     * Check if a proxy exists with the given parameters
+     */
+    public function proxyExists(string $ip, int $port, string $type = 'http', bool $isFree = true): bool
+    {
+        $key = sprintf(
+            '%s:%d:%s:%s',
+            strtolower($ip),
+            $port,
+            strtolower($type),
+            $isFree ? '1' : '0'
+        );
+        return isset($this->proxyIndex[$key]) && !empty($this->proxyIndex[$key]);
+    }
+
+    /**
+     * Add a proxy with duplicate checking
+     */
+    public function addProxyIfNotExists(string $ip, int $port, string $type = 'http', string $username = '', string $password = '', bool $isFree = false): ?string
+    {
+        // If it's a free proxy, check for duplicates
+        if ($isFree && $this->proxyExists($ip, $port, $type, true)) {
+            return null;
+        }
+
+        // Add the proxy
+        $id = $this->addProxy($ip, $port, $type, $username, $password, $isFree);
+
+        // Update the index
+        $key = sprintf(
+            '%s:%d:%s:%s',
+            strtolower($ip),
+            $port,
+            strtolower($type),
+            $isFree ? '1' : '0'
+        );
+        if (!isset($this->proxyIndex[$key])) {
+            $this->proxyIndex[$key] = [];
+        }
+        $this->proxyIndex[$key][] = $id;
+
+        return $id;
     }
 
     /**
@@ -139,21 +214,37 @@ class ProxyManager
     {
         $initialCount = count($this->proxies);
 
-        // Filter out the proxy with matching ID
-        $this->proxies = array_filter($this->proxies, function ($proxy) use ($id) {
-            return $proxy['id'] !== $id;
-        });
+        // Find and remove the proxy in one pass
+        foreach ($this->proxies as $key => $proxy) {
+            if ($proxy['id'] === $id) {
+                // Remove from the index first
+                $indexKey = sprintf(
+                    '%s:%d:%s:%s',
+                    strtolower($proxy['ip']),
+                    $proxy['port'],
+                    strtolower($proxy['type'] ?? 'http'),
+                    $proxy['is_free'] ? '1' : '0'
+                );
 
-        // Reindex the array
-        $this->proxies = array_values($this->proxies);
+                // Remove from proxies array
+                unset($this->proxies[$key]);
 
-        // Check if a proxy was removed
-        $wasRemoved = count($this->proxies) < $initialCount;
-        if ($wasRemoved) {
-            $this->saveProxies();
+                // Remove from index if it exists
+                if (isset($this->proxyIndex[$indexKey])) {
+                    unset($this->proxyIndex[$indexKey]);
+                }
+
+                // Reindex the array
+                $this->proxies = array_values($this->proxies);
+
+                // Save changes
+                $this->saveProxies();
+
+                return true;
+            }
         }
 
-        return $wasRemoved;
+        return false;
     }
 
     /**
@@ -183,6 +274,17 @@ class ProxyManager
     {
         return array_filter($this->proxies, function ($proxy) use ($ip, $port) {
             return $proxy['ip'] === $ip && $proxy['port'] === $port;
+        });
+    }
+
+    /**
+     * Get a list of proxies suitable for scraping
+     */
+    public function getProxiesForScraping(): array
+    {
+        // First try to get proxies with fewer failed attempts
+        return array_filter($this->proxies, function ($proxy) {
+            return ($proxy['failed_attempts'] ?? 0) < 3;
         });
     }
 

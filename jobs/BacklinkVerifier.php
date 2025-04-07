@@ -54,41 +54,40 @@ class BacklinkVerifier
     private function fetchPendingBacklinks(): array
     {
         $query = "
-            SELECT b.id, b.backlink_url, b.target_url, b.anchor_text, 
-                c.id AS campaign_id, c.verification_frequency, c.base_url
-            FROM backlinks b
-            INNER JOIN campaigns c ON b.campaign_id = c.id
-            LEFT JOIN backlink_verification_helper h ON c.id = h.campaign_id
-            WHERE b.status = 'pending'
-            AND c.status = 'enabled'
-            AND NOT EXISTS (
-                SELECT 1 FROM verification_logs vl 
-                WHERE vl.backlink_id = b.id 
-                AND DATE(vl.created_at) = CURDATE()
-            )
-            AND (
-                h.campaign_id IS NULL
-                OR (
-                    h.pending_backlinks > 0
-                    AND (h.last_run < CASE c.verification_frequency
-                            WHEN 'daily' THEN NOW() - INTERVAL 1 DAY
-                            WHEN 'weekly' THEN NOW() - INTERVAL 7 DAY
-                            WHEN 'every_two_weeks' THEN NOW() - INTERVAL 14 DAY
-                            WHEN 'monthly' THEN NOW() - INTERVAL 30 DAY
-                            ELSE NOW()
-                        END OR h.last_run IS NULL)
-                )
-            )
-            ORDER BY COALESCE(h.last_run, '2000-01-01') ASC, 
-                    COALESCE(h.pending_backlinks, 9999) DESC, 
-                    b.last_checked ASC
-            LIMIT 20
-        ";
+        SELECT b.id, b.backlink_url, b.target_url, b.anchor_text, 
+               c.id AS campaign_id, c.verification_frequency, c.base_url
+        FROM backlinks b
+        INNER JOIN campaigns c ON b.campaign_id = c.id
+        LEFT JOIN backlink_verification_helper h ON c.id = h.campaign_id
+        WHERE c.status = 'enabled'
+          AND NOT EXISTS (
+              SELECT 1 FROM verification_logs vl 
+              WHERE vl.backlink_id = b.id 
+              AND DATE(vl.created_at) = CURDATE()
+          )
+          AND (
+              h.campaign_id IS NULL
+              OR h.last_run IS NULL
+              OR h.last_run < CASE c.verification_frequency
+                  WHEN 'daily' THEN NOW() - INTERVAL 1 DAY
+                  WHEN 'weekly' THEN NOW() - INTERVAL 7 DAY
+                  WHEN 'every_two_weeks' THEN NOW() - INTERVAL 14 DAY
+                  WHEN 'monthly' THEN NOW() - INTERVAL 30 DAY
+                  ELSE NOW() - INTERVAL 1 DAY
+              END
+          )
+          AND (h.pending_backlinks IS NULL OR h.pending_backlinks > 0)
+        ORDER BY b.last_checked ASC
+        LIMIT 20
+    ";
 
         $stmt = $this->pdo->prepare($query);
         $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $backlinks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        error_log("Fetched " . count($backlinks) . " backlinks for verification");
+        return $backlinks;
     }
+
 
     private function verifyBacklinks(array $backlinks): array
     {
@@ -132,8 +131,6 @@ class BacklinkVerifier
 
     private function verifySingleBacklink(array $backlink, int $attempt, array &$usedProxies): array
     {
-        static $proxyFailures = [];
-
         $ch = curl_init();
         $randomUserAgent = self::USER_AGENTS[array_rand(self::USER_AGENTS)];
 
@@ -198,27 +195,42 @@ class BacklinkVerifier
             echo '<pre>';
             print_r([$curlError, $httpCode]);
             echo '<hr>';
-            $proxyFailures[$proxyKey] = ($proxyFailures[$proxyKey] ?? 0) + 1;
-            $this->logError($backlink['id'], $proxyKey, 'proxy', "Proxy error: $curlError (Proxy: $proxyKey)", $attempt);
 
-            if ($proxyFailures[$proxyKey] >= 3) {
-                echo "Removing proxy $proxyKey after 3 failures\n";
-                $this->proxyManager->removeProxy($proxy['ip'], $proxy['port']);
-                unset($proxyFailures[$proxyKey]);
+            // Record the failed attempt using ProxyManager
+            if (isset($proxy['id'])) {
+                $this->proxyManager->recordFailedAttempt($proxy['id']);
+                echo "Recorded failed attempt for proxy {$proxy['ip']}:{$proxy['port']} (ID: {$proxy['id']})\n";
+            } else {
+                echo "Warning: Proxy ID not found for {$proxy['ip']}:{$proxy['port']}\n";
             }
 
+            $this->logError($backlink['id'], $proxyKey, 'proxy', "Proxy error: $curlError (Proxy: $proxyKey)", $attempt);
             throw new Exception("Proxy error with proxy $proxyKey: $curlError");
         }
 
         if ($httpCode !== 200) {
             $errorMessage = "HTTP error: $httpCode";
             $this->logError($backlink['id'], $proxyKey, 'http', $errorMessage, $attempt);
+
+            // Record the failed attempt for HTTP errors too
+            if (isset($proxy['id'])) {
+                $this->proxyManager->recordFailedAttempt($proxy['id']);
+                echo "Recorded failed attempt for proxy {$proxy['ip']}:{$proxy['port']} (ID: {$proxy['id']}) due to HTTP error\n";
+            }
+
             throw new Exception($errorMessage);
         }
 
         if (!$content) {
             $errorMessage = "No content received from backlink URL";
             $this->logError($backlink['id'], $proxyKey, 'http', $errorMessage, $attempt);
+
+            // Record the failed attempt for empty content too
+            if (isset($proxy['id'])) {
+                $this->proxyManager->recordFailedAttempt($proxy['id']);
+                echo "Recorded failed attempt for proxy {$proxy['ip']}:{$proxy['port']} (ID: {$proxy['id']}) due to empty content\n";
+            }
+
             throw new Exception($errorMessage);
         }
         /*
@@ -226,6 +238,11 @@ class BacklinkVerifier
         print_r($content);
         echo '<br>Content Ends.<br><hr>';
         */
+
+        // If we got here, the proxy worked successfully, so reset its failed attempts
+        if (isset($proxy['id'])) {
+            $this->proxyManager->resetFailedAttempts($proxy['id']);
+        }
 
         return $this->checkBacklinkPresence($content, $backlink, $proxyKey);
     }
@@ -316,10 +333,18 @@ class BacklinkVerifier
             try {
                 $this->pdo->beginTransaction();
 
-                $this->updateBacklinkStatus($result);
-                $this->logVerification($result);
-                $this->updateVerificationLog($result['campaign_id']);
-                $this->updateCampaignTimestamp($result['campaign_id']);
+                // Only update backlink status if we have a successful verification
+                // (not null result and no error)
+                if ($result && !isset($result['error'])) {
+                    $this->updateBacklinkStatus($result);
+                    $this->logVerification($result);
+                    $this->updateVerificationLog($result['campaign_id']);
+                    $this->updateCampaignTimestamp($result['campaign_id']);
+                } else {
+                    // Log the failed verification attempt without updating status
+                    error_log("Backlink verification failed for ID {$result['backlink_id']}: " . ($result['error'] ?? 'Unknown error'));
+                    $this->logError($result['backlink_id'], null, 'verification', $result['error'] ?? 'Unknown error', 1);
+                }
 
                 $this->pdo->commit();
             } catch (Exception $e) {
@@ -332,9 +357,8 @@ class BacklinkVerifier
 
     private function updateBacklinkStatus(array $result): void
     {
-
         $status = $result['is_active'] ? 'alive' : 'dead';
-        $anchor_text_found = $result['anchor_text_found'] ?? FALSE;
+        $anchor_text_found = isset($result['anchor_text_found']) ? (int)$result['anchor_text_found'] : 0;
         $stmt = $this->pdo->prepare(
             "UPDATE backlinks SET status = ?, anchor_text_found = ?, last_checked = NOW() WHERE id = ?"
         );
@@ -354,15 +378,26 @@ class BacklinkVerifier
     private function updateVerificationLog(int $campaignId): void
     {
         $stmt = $this->pdo->prepare("
-            INSERT INTO backlink_verification_helper (campaign_id, last_run, pending_backlinks)
-            SELECT ?, NOW(), COUNT(*)
-            FROM backlinks 
-            WHERE campaign_id = ? AND status = 'pending'
-            ON DUPLICATE KEY UPDATE 
-                last_run = NOW(),
-                pending_backlinks = VALUES(pending_backlinks)
-        ");
+        INSERT INTO backlink_verification_helper (campaign_id, last_run, pending_backlinks)
+        SELECT ?, NOW(), COUNT(b.id)
+        FROM backlinks b
+        WHERE b.campaign_id = ?
+          AND NOT EXISTS (
+              SELECT 1 FROM verification_logs vl 
+              WHERE vl.backlink_id = b.id 
+              AND DATE(vl.created_at) = CURDATE()
+          )
+        ON DUPLICATE KEY UPDATE 
+            last_run = NOW(),
+            pending_backlinks = VALUES(pending_backlinks)
+    ");
         $stmt->execute([$campaignId, $campaignId]);
+
+        // Debug: Log the updated pending_backlinks count
+        $stmt = $this->pdo->prepare("SELECT pending_backlinks FROM backlink_verification_helper WHERE campaign_id = ?");
+        $stmt->execute([$campaignId]);
+        $pendingBacklinks = $stmt->fetchColumn();
+        error_log("Updated backlink_verification_helper for campaign_id $campaignId: pending_backlinks = $pendingBacklinks");
     }
 
     private function updateCampaignTimestamp(int $campaignId): void
