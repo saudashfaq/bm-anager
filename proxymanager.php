@@ -13,6 +13,61 @@ require_once __DIR__ . '/config/ProxyManager.php';
 // Initialize ProxyManager
 $proxyManager = new ProxyManager();
 
+// Fetch and update free proxies if this is an automated job
+if (isset($_GET['auto_update']) && $_GET['auto_update'] === '1') {
+    // This is an automated job, fetch free proxies and update them
+    $newFreeProxies = []; // This would be populated with newly scraped free proxies
+
+    // Example of how to populate $newFreeProxies from a scraping source
+    // This is just a placeholder - you would implement your actual scraping logic here
+    try {
+        // Example: Fetch free proxies from a public API or website
+        // $newFreeProxies = fetchFreeProxiesFromSource();
+
+        // For demonstration, let's assume we have some free proxies
+        // In a real implementation, you would replace this with actual scraping logic
+        $newFreeProxies = [
+            [
+                'ip' => '192.168.1.100',
+                'port' => 8080,
+                'type' => 'http',
+                'username' => '',
+                'password' => ''
+            ],
+            // Add more proxies as needed
+        ];
+
+        // Update the free proxies
+        $removedIds = $proxyManager->updateAutoAddedFreeProxies($newFreeProxies);
+
+        // Log the results
+        error_log("Updated free proxies. Removed " . count($removedIds) . " proxies.");
+
+        // If this is an AJAX request, return JSON response
+        if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest') {
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => true,
+                'removed_count' => count($removedIds),
+                'removed_ids' => $removedIds
+            ]);
+            exit;
+        }
+    } catch (Exception $e) {
+        error_log("Error updating free proxies: " . $e->getMessage());
+
+        // If this is an AJAX request, return JSON response
+        if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest') {
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => false,
+                'error' => $e->getMessage()
+            ]);
+            exit;
+        }
+    }
+}
+
 // Handle proxy addition
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_proxy'])) {
     if (!hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
@@ -32,7 +87,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_proxy'])) {
         filter_var($ipOrHost, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME)
     ) {
         try {
-            $proxyManager->addProxy($ipOrHost, $port, $type, $username, $password, $is_free);
+            // Explicitly set auto_added to false for manually added proxies
+            $proxyManager->addProxy($ipOrHost, $port, $type, $username, $password, $is_free, false);
             header('Location: ' . $_SERVER['PHP_SELF']);
             exit;
         } catch (Exception $e) {
@@ -245,6 +301,14 @@ $proxies = json_decode(file_get_contents(__DIR__ . '/config/proxies.json'), true
                                 <option value="free">Free Proxies</option>
                                 <option value="paid">Paid Proxies</option>
                             </select>
+                            <button type="button" class="btn btn-primary m-2" id="updateFreeProxies">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-refresh me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                                    <path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4" />
+                                    <path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4" />
+                                </svg>
+                                Update Free Proxies
+                            </button>
                             <button type="button" class="btn btn-danger d-none" id="removeSelected">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-trash me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
                                     <path stroke="none" d="M0 0h24v24H0z" fill="none" />
@@ -473,6 +537,49 @@ $proxies = json_decode(file_get_contents(__DIR__ . '/config/proxies.json'), true
                 const selectedCount = document.querySelectorAll('.proxy-select:checked').length;
                 document.getElementById('selectedCount').textContent = selectedCount;
                 removeSelected.classList.toggle('d-none', selectedCount === 0);
+            }
+
+            // Handle update free proxies button
+            const updateFreeProxiesBtn = document.getElementById('updateFreeProxies');
+            if (updateFreeProxiesBtn) {
+                updateFreeProxiesBtn.addEventListener('click', function() {
+                    if (!confirm('Are you sure you want to update the free proxies? This will remove any automatically added free proxies that are no longer available.')) {
+                        return;
+                    }
+
+                    // Show loading state
+                    this.disabled = true;
+                    this.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Updating...';
+
+                    // Make AJAX request to run the ProxyScraperValidator job
+                    fetch('jobs/ProxyScraperValidator.php', {
+                            method: 'GET',
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest'
+                            }
+                        })
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error('Network response was not ok');
+                            }
+                            return response.text();
+                        })
+                        .then(data => {
+                            // The job doesn't return JSON, so we'll just show a success message
+                            alert('Successfully updated free proxies. The page will now reload to show the updated proxies.');
+                            // Reload the page to show updated proxies
+                            window.location.reload();
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            alert('An error occurred while updating free proxies: ' + error.message);
+                        })
+                        .finally(() => {
+                            // Reset button state
+                            this.disabled = false;
+                            this.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-refresh me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4" /><path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4" /></svg> Update Free Proxies';
+                        });
+                });
             }
         });
     </script>

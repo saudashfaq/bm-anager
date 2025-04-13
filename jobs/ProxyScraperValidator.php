@@ -16,6 +16,12 @@ class ProxyScraperValidator
     private $proxyManager;
     private $currentProxy;
     private $statistics = [];
+    private $validProxies = [];
+    private $proxySources = [
+        'free-proxy-list.net' => 'https://free-proxy-list.net/',
+        'proxyscrape.com' => 'https://api.proxyscrape.com/v2/?request=getproxies&protocol=http&timeout=10000&country=all&ssl=all&anonymity=all',
+        'proxylist.geonode.com' => 'https://proxylist.geonode.com/api/proxy-list?limit=500&page=1&sort_by=lastChecked&sort_type=desc&protocols=http%2Chttps'
+    ];
 
     public function __construct(ProxyManager $proxyManager)
     {
@@ -23,12 +29,117 @@ class ProxyScraperValidator
         error_log("[ProxyScraperValidator] Initialized with ProxyManager");
     }
 
+    /**
+     * Log a message
+     * 
+     * @param string $message The message to log
+     * @return void
+     */
+    private function log($message)
+    {
+        error_log("[ProxyScraperValidator] " . $message);
+    }
+
+    /**
+     * Scrape proxies from all sources
+     * 
+     * @return void
+     */
+    private function scrapeProxies()
+    {
+        $this->log("Starting proxy scraping process...");
+        $this->statistics = [];
+
+        // Scrape from each source
+        foreach ($this->proxySources as $source => $url) {
+            try {
+                $proxies = $this->scrapeSource($url, $source);
+                $this->statistics[$source] = [
+                    'total' => count($proxies),
+                    'valid' => 0
+                ];
+                $this->validProxies = array_merge($this->validProxies, $proxies);
+            } catch (Exception $e) {
+                $this->statistics[$source] = [
+                    'total' => 0,
+                    'valid' => 0,
+                    'error' => $e->getMessage()
+                ];
+            }
+        }
+    }
+
+    /**
+     * Validate proxies
+     * 
+     * @return void
+     */
+    private function validateProxies()
+    {
+        $this->log("Starting proxy validation process...");
+        $processedProxies = $this->processBatch($this->validProxies);
+        $this->displayStatistics();
+    }
+
+    /**
+     * Display statistics
+     * 
+     * @return void
+     */
+    private function displayStats()
+    {
+        $this->log("Proxy scraping and validation statistics:");
+        foreach ($this->statistics as $source => $stats) {
+            $this->log("Source: $source");
+            $this->log("  Total proxies: " . $stats['total']);
+            $this->log("  Valid proxies: " . $stats['valid']);
+            if (isset($stats['error'])) {
+                $this->log("  Error: " . $stats['error']);
+            }
+        }
+    }
+
+    public function run()
+    {
+        $this->log("Starting proxy scraping and validation...");
+
+        // Initialize proxy manager
+        $proxyManager = new ProxyManager();
+
+        // Scrape proxies from all sources
+        $this->scrapeProxies();
+
+        // Validate proxies
+        $this->validateProxies();
+
+        // Update auto-added free proxies
+        $this->log("Updating auto-added free proxies...");
+        $autoAddedProxies = $proxyManager->getAutoAddedFreeProxies();
+        $this->log("Found " . count($autoAddedProxies) . " auto-added free proxies");
+
+        // Get all valid proxies from this run
+        $newFreeProxies = [];
+        foreach ($this->validProxies as $proxy) {
+            if ($proxy['type'] === 'free') {
+                $newFreeProxies[] = $proxy;
+            }
+        }
+
+        // Update auto-added free proxies
+        $result = $proxyManager->updateAutoAddedFreeProxies($newFreeProxies);
+        $this->log("Updated auto-added free proxies: " . $result['removed_count'] . " removed, " . $result['added_count'] . " added");
+
+        // Display statistics
+        $this->displayStats();
+
+        $this->log("Proxy scraping and validation completed.");
+    }
+
     public function scrapeAndValidate(): array
     {
         error_log("[ProxyScraperValidator] Starting proxy scraping process...");
-        $validProxies = [];
-        $totalProxies = 0;
         $this->statistics = [];
+        $allScrapedProxies = []; // New array to hold all scraped proxies
 
         $this->currentProxy = $this->proxyManager->getProxyForScraping();
         if ($this->currentProxy) {
@@ -37,17 +148,17 @@ class ProxyScraperValidator
             error_log("[ProxyScraperValidator] No proxy available for scraping, proceeding without proxy");
         }
 
+        // First, scrape ALL sources and collect proxies
         foreach (self::SOURCES as $source => $url) {
             try {
                 $proxies = $this->scrapeSource($url, $source);
-                $totalProxies += count($proxies);
-
                 $this->statistics[$source] = [
                     'total' => count($proxies),
                     'valid' => 0
                 ];
 
-                $validProxies = array_merge($validProxies, $proxies);
+                // Add to all scraped proxies instead of processing immediately
+                $allScrapedProxies = array_merge($allScrapedProxies, $proxies);
             } catch (Exception $e) {
                 $this->statistics[$source] = [
                     'total' => 0,
@@ -57,7 +168,10 @@ class ProxyScraperValidator
             }
         }
 
-        $processedProxies = $this->processBatch($validProxies);
+        error_log("[ProxyScraperValidator] Total proxies scraped from all sources: " . count($allScrapedProxies));
+
+        // Only AFTER all sources are scraped, process and update proxies.json
+        $processedProxies = $this->processBatch($allScrapedProxies);
         $this->displayStatistics();
 
         return $processedProxies;
@@ -378,41 +492,19 @@ class ProxyScraperValidator
 require_once __DIR__ . '/../config/ProxyManager.php';
 $proxyManager = new ProxyManager();
 $proxyValidator = new ProxyScraperValidator($proxyManager);
+
+// Get all scraped and validated proxies
 $validProxies = $proxyValidator->scrapeAndValidate();
 
-foreach ($validProxies as $proxy) {
-    try {
-        if ($proxy['is_free']) {
-            $existingProxies = $proxyManager->getProxiesByIpPort($proxy['ip'], $proxy['port']);
-            $duplicateFound = false;
-            foreach ($existingProxies as $existingProxy) {
-                if (
-                    $existingProxy['is_free'] &&
-                    ($existingProxy['type'] ?? 'http') === ($proxy['type'] ?? 'http')
-                ) {
-                    $duplicateFound = true;
-                    error_log("[ProxyScraperValidator] Skipping duplicate free proxy: {$proxy['ip']}:{$proxy['port']}");
-                    break;
-                }
-            }
+// Now update proxies.json with all the validated proxies at once
+$newFreeProxies = array_filter($validProxies, function ($proxy) {
+    return $proxy['is_free'] ?? false;
+});
 
-            if ($duplicateFound) {
-                continue;
-            }
-        }
-
-        error_log("[ProxyScraperValidator] Adding proxy: {$proxy['ip']}:{$proxy['port']}");
-        $proxyManager->addProxy(
-            $proxy['ip'],
-            $proxy['port'],
-            $proxy['type'] ?? 'http',
-            '',
-            '',
-            true
-        );
-    } catch (Exception $e) {
-        error_log("[ProxyScraperValidator] Failed to add proxy {$proxy['ip']}:{$proxy['port']}: " . $e->getMessage());
-    }
+// Update the auto-added free proxies all at once
+try {
+    $removedIds = $proxyManager->updateAutoAddedFreeProxies($newFreeProxies);
+    error_log("[ProxyScraperValidator] Successfully updated proxies.json: Removed " . count($removedIds) . " old proxies, added " . count($newFreeProxies) . " new proxies");
+} catch (Exception $e) {
+    error_log("[ProxyScraperValidator] Failed to update proxies.json: " . $e->getMessage());
 }
-
-error_log("[ProxyScraperValidator] Added " . count($validProxies) . " proxies to the proxy pool");

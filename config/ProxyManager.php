@@ -94,8 +94,17 @@ class ProxyManager
 
     /**
      * Add a proxy with duplicate checking
+     * 
+     * @param string $ip The IP address or hostname of the proxy
+     * @param int $port The port number
+     * @param string $type The proxy type (http, https, socks4, socks5)
+     * @param string $username Optional username for authentication
+     * @param string $password Optional password for authentication
+     * @param bool $isFree Whether this is a free proxy (true) or paid proxy (false)
+     * @param bool $auto_added Whether this proxy was automatically added (true) or manually added (false)
+     * @return string|null The unique ID of the added proxy, or null if it already exists
      */
-    public function addProxyIfNotExists(string $ip, int $port, string $type = 'http', string $username = '', string $password = '', bool $isFree = false): ?string
+    public function addProxyIfNotExists(string $ip, int $port, string $type = 'http', string $username = '', string $password = '', bool $isFree = false, bool $auto_added = false): ?string
     {
         // If it's a free proxy, check for duplicates
         if ($isFree && $this->proxyExists($ip, $port, $type, true)) {
@@ -103,7 +112,7 @@ class ProxyManager
         }
 
         // Add the proxy
-        $id = $this->addProxy($ip, $port, $type, $username, $password, $isFree);
+        $id = $this->addProxy($ip, $port, $type, $username, $password, $isFree, $auto_added);
 
         // Update the index
         $key = sprintf(
@@ -130,10 +139,11 @@ class ProxyManager
      * @param string $username Optional username for authentication
      * @param string $password Optional password for authentication
      * @param bool $is_free Whether this is a free proxy (true) or paid proxy (false)
+     * @param bool $auto_added Whether this proxy was automatically added (true) or manually added (false)
      * @throws InvalidArgumentException If the proxy type is invalid
      * @return string The unique ID of the added proxy
      */
-    public function addProxy(string $ip, int $port, string $type = 'http', string $username = '', string $password = '', bool $is_free = false): string
+    public function addProxy(string $ip, int $port, string $type = 'http', string $username = '', string $password = '', bool $is_free = false, bool $auto_added = false): string
     {
         if (!in_array($type, self::VALID_PROXY_TYPES)) {
             throw new InvalidArgumentException("Invalid proxy type. Must be one of: " . implode(', ', self::VALID_PROXY_TYPES));
@@ -151,7 +161,45 @@ class ProxyManager
             'usage' => [],
             'last_used' => null,
             'failed_attempts' => 0,
-            'last_failed' => null
+            'last_failed' => null,
+            'auto_added' => $auto_added // Flag to indicate if proxy was added automatically
+        ];
+        $this->saveProxies();
+        return $id;
+    }
+
+    /**
+     * Add a proxy that was automatically scraped
+     * 
+     * @param string $ip The IP address or hostname of the proxy
+     * @param int $port The port number
+     * @param string $type The proxy type (http, https, socks4, socks5)
+     * @param string $username Optional username for authentication
+     * @param string $password Optional password for authentication
+     * @param bool $is_free Whether this is a free proxy (true) or paid proxy (false)
+     * @throws InvalidArgumentException If the proxy type is invalid
+     * @return string The unique ID of the added proxy
+     */
+    public function addAutoScrapedProxy(string $ip, int $port, string $type = 'http', string $username = '', string $password = '', bool $is_free = false): string
+    {
+        if (!in_array($type, self::VALID_PROXY_TYPES)) {
+            throw new InvalidArgumentException("Invalid proxy type. Must be one of: " . implode(', ', self::VALID_PROXY_TYPES));
+        }
+
+        $id = $this->generateUniqueId();
+        $this->proxies[] = [
+            'id' => $id,
+            'ip' => $ip,
+            'port' => $port,
+            'type' => $type,
+            'username' => $username,
+            'password' => $password,
+            'is_free' => $is_free,
+            'usage' => [],
+            'last_used' => null,
+            'failed_attempts' => 0,
+            'last_failed' => null,
+            'auto_added' => true // Flag to indicate this proxy was added automatically
         ];
         $this->saveProxies();
         return $id;
@@ -475,6 +523,104 @@ class ProxyManager
         return array_filter($this->proxies, function ($proxy) {
             return !empty($proxy['is_free']);
         });
+    }
+
+    /**
+     * Get all automatically added free proxies from the pool
+     * 
+     * @return array Array of automatically added free proxies
+     */
+    public function getAutoAddedFreeProxies(): array
+    {
+        return array_filter($this->proxies, function ($proxy) {
+            return !empty($proxy['is_free']) && !empty($proxy['auto_added']);
+        });
+    }
+
+    /**
+     * Get all manually added free proxies from the pool
+     * 
+     * @return array Array of manually added free proxies
+     */
+    public function getManuallyAddedFreeProxies(): array
+    {
+        return array_filter($this->proxies, function ($proxy) {
+            return !empty($proxy['is_free']) && empty($proxy['auto_added']);
+        });
+    }
+
+    /**
+     * Update free proxies based on newly scraped ones
+     * This method will:
+     * 1. Get all automatically added free proxies
+     * 2. Remove those that are not in the newly scraped list
+     * 3. Add new free proxies from the scraped list
+     * 
+     * @param array $newFreeProxies Array of newly scraped free proxies, each with 'ip', 'port', 'type', 'username', 'password'
+     * @return array Array of removed proxy IDs
+     */
+    public function updateAutoAddedFreeProxies(array $newFreeProxies): array
+    {
+        // Get current auto-added free proxies
+        $currentAutoAddedFreeProxies = $this->getAutoAddedFreeProxies();
+
+        // Create a map of current auto-added free proxies for easy lookup
+        $currentAutoAddedMap = [];
+        foreach ($currentAutoAddedFreeProxies as $proxy) {
+            $key = $this->generateProxyKey($proxy);
+            $currentAutoAddedMap[$key] = $proxy;
+        }
+
+        // Create a map of new free proxies for easy lookup
+        $newFreeProxiesMap = [];
+        foreach ($newFreeProxies as $proxy) {
+            $key = sprintf(
+                '%s:%d:%s:1', // 1 indicates it's a free proxy
+                strtolower($proxy['ip']),
+                $proxy['port'],
+                strtolower($proxy['type'] ?? 'http')
+            );
+            $newFreeProxiesMap[$key] = $proxy;
+        }
+
+        // Find proxies to remove (in current but not in new)
+        $proxiesToRemove = [];
+        foreach ($currentAutoAddedMap as $key => $proxy) {
+            if (!isset($newFreeProxiesMap[$key])) {
+                $proxiesToRemove[] = $proxy['id'];
+            }
+        }
+
+        // Remove proxies that are no longer in the new list
+        $removedIds = [];
+        foreach ($proxiesToRemove as $id) {
+            if ($this->removeProxyById($id)) {
+                $removedIds[] = $id;
+            }
+        }
+
+        // Add new proxies that aren't in the current list
+        foreach ($newFreeProxies as $proxy) {
+            $key = sprintf(
+                '%s:%d:%s:1',
+                strtolower($proxy['ip']),
+                $proxy['port'],
+                strtolower($proxy['type'] ?? 'http')
+            );
+
+            if (!isset($currentAutoAddedMap[$key])) {
+                $this->addAutoScrapedProxy(
+                    $proxy['ip'],
+                    $proxy['port'],
+                    $proxy['type'] ?? 'http',
+                    $proxy['username'] ?? '',
+                    $proxy['password'] ?? '',
+                    true
+                );
+            }
+        }
+
+        return $removedIds;
     }
 
     /**
