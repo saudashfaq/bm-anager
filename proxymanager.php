@@ -188,7 +188,7 @@ $proxies = json_decode(file_get_contents(__DIR__ . '/config/proxies.json'), true
                                     </svg>
                                     IP Address
                                 </label>
-                                <input type="text" class="form-control" name="ip" required placeholder="192.168.1.1" value="proxy.geonode.io">
+                                <input type="text" class="form-control" name="ip" required placeholder="127.0.0.1">
                             </div>
                             <div class="col-md-2">
                                 <label class="form-label d-flex align-items-center">
@@ -201,7 +201,7 @@ $proxies = json_decode(file_get_contents(__DIR__ . '/config/proxies.json'), true
                                     </svg>
                                     Port
                                 </label>
-                                <input type="number" class="form-control" name="port" required min="1" max="65535" placeholder="8080" value="9000">
+                                <input type="number" class="form-control" name="port" required min="1" max="65535" placeholder="8080">
                             </div>
                             <div class="col-md-2">
                                 <label class="form-label d-flex align-items-center">
@@ -246,7 +246,7 @@ $proxies = json_decode(file_get_contents(__DIR__ . '/config/proxies.json'), true
                                     </svg>
                                     Username
                                 </label>
-                                <input type="text" class="form-control" name="username" placeholder="Username (optional)" value="geonode_MPNHllDs0x-type-residential">
+                                <input type="text" class="form-control" name="username" placeholder="Username (optional)">
                             </div>
                         </div>
 
@@ -262,7 +262,7 @@ $proxies = json_decode(file_get_contents(__DIR__ . '/config/proxies.json'), true
                                     </svg>
                                     Password
                                 </label>
-                                <input type="text" class="form-control" name="password" placeholder="Password (optional)" value="14060fc6-a288-4956-b0f6-eb78591b795c">
+                                <input type="text" class="form-control" name="password" placeholder="Password (optional)">
                             </div>
                             <div class="col-md-3 d-flex align-items-end">
                                 <button type="submit" class="btn btn-primary w-100">

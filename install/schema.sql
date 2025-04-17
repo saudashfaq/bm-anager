@@ -24,11 +24,11 @@ CREATE TABLE IF NOT EXISTS backlinks (
     id INT AUTO_INCREMENT PRIMARY KEY,
     campaign_id INT NOT NULL,
     backlink_url VARCHAR(255) NOT NULL,
-    base_domain VARCHAR(255) NULL, --this will hold the base_domain from the backlink_url
+    base_domain VARCHAR(255) NULL COMMENT 'this will hold the base_domain from the backlink_url',
     target_url VARCHAR(255) NULL,
     anchor_text VARCHAR(255) NULL,
     `status` ENUM('alive', 'dead', 'pending') NOT NULL DEFAULT 'pending',
-    anchor_text_found BOOLEAN NULL, -- Nullable boolean for anchor text presence
+    anchor_text_found BOOLEAN NULL COMMENT 'Nullable boolean for anchor text presence', 
     is_duplicate ENUM('yes', 'no') NOT NULL DEFAULT 'no',
     created_by INT NOT NULL,
     last_checked TIMESTAMP NULL DEFAULT NULL,
