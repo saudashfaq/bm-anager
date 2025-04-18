@@ -26,6 +26,7 @@ function validateInput($data)
 }
 
 // Normalize site_url and base_url
+/*
 function normalizeUrls($siteUrl, $baseUrl)
 {
     // Normalize site_url: Remove trailing slash
@@ -40,6 +41,22 @@ function normalizeUrls($siteUrl, $baseUrl)
 
     return [$siteUrl, $fullBaseUrl];
 }
+    */
+function normalizeUrls($siteUrl, $baseUrl)
+{
+    // Normalize site_url: Remove trailing slash
+    $siteUrl = rtrim($siteUrl, '/');
+
+    // Normalize base_url: Ensure it starts and ends with exactly one slash
+    $baseUrl = trim($baseUrl, '/'); // Remove leading/trailing slashes first
+    $baseUrl = $baseUrl ? "/$baseUrl/" : '/'; // Add leading and trailing slashes, default to '/' if empty
+
+    // Combine to form BASE_URL and ensure it ends with a trailing slash
+    $fullBaseUrl = $siteUrl . $baseUrl;
+
+    return [$siteUrl, $fullBaseUrl];
+}
+
 
 // Check if the application is already installed
 function isAppInstalled()
