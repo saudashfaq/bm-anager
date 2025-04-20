@@ -75,6 +75,17 @@ CREATE TABLE IF NOT EXISTS  settings (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS cron_jobs (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            job_name VARCHAR(50) NOT NULL,
+            last_run DATETIME DEFAULT NULL,
+            next_run DATETIME DEFAULT NULL,
+            status VARCHAR(20) DEFAULT 'pending',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY (job_name)
+        );
+
 /*more to consider for job*/
 /*
 CREATE INDEX idx_backlinks_status ON backlinks(`status`, campaign_id, last_checked);

@@ -5,10 +5,10 @@ error_reporting(E_ALL);
 class ProxyScraperValidator
 {
     private const SOURCES = [
-        'proxyscrape' => 'https://api.proxyscrape.com/v2/?request=getproxies&protocol=http&timeout=10000&country=all&ssl=all&anonymity=all',
-        'freeproxylist' => 'https://free-proxy-list.net/',
         'geonode' => 'https://proxylist.geonode.com/api/proxy-list?limit=100&page=1&sort_by=lastChecked&sort_type=desc&protocols=http%2Chttps',
-        'proxylistdownload' => 'https://www.proxy-list.download/api/v1/get?type=http'
+        //'proxylistdownload' => 'https://www.proxy-list.download/api/v1/get?type=http',
+        //'proxyscrape' => 'https://api.proxyscrape.com/v2/?request=getproxies&protocol=http&timeout=10000&country=all&ssl=all&anonymity=all',
+        //'freeproxylist' => 'https://free-proxy-list.net/',
     ];
 
     private const MAX_RETRIES = 3;

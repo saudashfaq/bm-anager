@@ -22,9 +22,13 @@ if (!$campaign) {
     die('Campaign not found');
 }
 
-// Get all backlinks for this campaign
+// Get all backlinks for this campaign with creator username
 $stmt = $pdo->prepare("
-    SELECT * FROM backlinks WHERE campaign_id = ? ORDER BY created_at DESC
+    SELECT b.*, u.username as created_by_username 
+    FROM backlinks b
+    LEFT JOIN users u ON b.created_by = u.id
+    WHERE b.campaign_id = ? 
+    ORDER BY b.created_at DESC
 ");
 $stmt->execute([$campaign_id]);
 $backlinks = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -46,39 +50,40 @@ fputcsv($output, ['Campaign Name', $campaign['name']]);
 fputcsv($output, ['Base URL', $campaign['base_url']]);
 fputcsv($output, ['Status', ucfirst($campaign['status'])]);
 fputcsv($output, ['Verification Frequency', ucfirst($campaign['verification_frequency'])]);
-fputcsv($output, ['Created At', $campaign['created_at']]);
-fputcsv($output, ['Last Updated', $campaign['updated_at']]);
+fputcsv($output, ['Last Checked', $campaign['last_checked'] ? date('Y-m-d H:i:s', strtotime($campaign['last_checked'])) : 'Never']);
+fputcsv($output, ['Created At', date('Y-m-d H:i:s', strtotime($campaign['created_at']))]);
+fputcsv($output, ['Last Updated', $campaign['updated_at'] ? date('Y-m-d H:i:s', strtotime($campaign['updated_at'])) : 'Never']);
 fputcsv($output, ['']);
 fputcsv($output, ['BACKLINKS DATA']);
 fputcsv($output, ['']);
 
 // Add backlinks data headers
 fputcsv($output, [
-    'Source URL',
+    'Backlink URL',
+    'Base Domain',
     'Target URL',
     'Anchor Text',
     'Status',
-    'Follow Status',
-    'Domain Authority',
-    'Page Authority',
-    'Last Verified',
-    'Created At',
-    'Notes'
+    'Anchor Text Found',
+    'Is Duplicate',
+    'Created By',
+    'Last Checked',
+    'Created At'
 ]);
 
 // Add backlinks data
 foreach ($backlinks as $backlink) {
     fputcsv($output, [
-        $backlink['source_url'],
+        $backlink['backlink_url'],
+        $backlink['base_domain'],
         $backlink['target_url'],
         $backlink['anchor_text'],
         ucfirst($backlink['status']),
-        $backlink['follow_status'],
-        $backlink['domain_authority'],
-        $backlink['page_authority'],
-        $backlink['last_verified'],
-        $backlink['created_at'],
-        $backlink['notes']
+        $backlink['anchor_text_found'] ? 'Yes' : 'No',
+        ucfirst($backlink['is_duplicate']),
+        $backlink['created_by_username'],
+        $backlink['last_checked'] ? date('Y-m-d H:i:s', strtotime($backlink['last_checked'])) : 'Never',
+        date('Y-m-d H:i:s', strtotime($backlink['created_at']))
     ]);
 }
 

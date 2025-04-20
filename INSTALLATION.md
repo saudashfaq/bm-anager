@@ -6,8 +6,9 @@
 2. [Installation Steps](#installation-steps)
 3. [Configuration](#configuration)
 4. [Database Setup](#database-setup)
-5. [Security Considerations](#security-considerations)
-6. [Troubleshooting](#troubleshooting)
+5. [Cron Jobs Setup](#cron-jobs-setup)
+6. [Security Considerations](#security-considerations)
+7. [Troubleshooting](#troubleshooting)
 
 ## System Requirements
 
@@ -62,7 +63,101 @@
    - Use the default credentials:
      - Username: admin@example.com
      - Password: 12345678
-   - **Important**: Create a strong password
+   - **Important**: Create a strong password or update password by visiting the "Profile" link
+
+## Cron Jobs Setup
+
+The application requires two automated tasks to run periodically:
+
+1. **Backlink Verification** (default every 30 minutes)
+2. **Proxy Scraping and Validation** (default every 6 hours)
+
+These jobs will run automaticall when you setup the cron job as follows.
+
+### Setting Up the Cron Job
+
+1. **Access your server's crontab**
+
+   ```bash
+   crontab -e
+   ```
+
+2. **Add the following line to run the cron manager every 5 minutes**
+
+   ```bash
+   */5 * * * * php /path/to/your/backlinks_manager/jobs/cron_manager.php >> /path/to/your/backlinks_manager/logs/cron.log 2>&1
+   ```
+
+   Replace `/path/to/your/backlinks_manager` with your actual installation path.
+
+3. **Create the logs directory**
+
+Even if you don't create the following file it should get created automatically. You might need to set the permissions only.
+
+```bash
+mkdir -p /path/to/your/backlinks_manager/logs
+chmod 755 /path/to/your/backlinks_manager/logs
+```
+
+4. **Verify the cron job is running**
+   - Check the cron log file:
+     ```bash
+     tail -f /path/to/your/backlinks_manager/logs/cron.log
+     ```
+   - You should see messages indicating the cron manager is running and jobs are being executed
+
+### Cron Job Configuration
+
+The cron jobs are managed by `cron_manager.php`, which:
+
+- Tracks when each job was last run
+- Determines when each job should run next
+- Executes jobs only when they are due
+- Logs all job executions and any errors
+
+You can modify the job intervals by editing the `$jobs` array in `cron_manager.php`:
+
+```php
+$jobs = [
+    'backlink_verifier' => [
+        'interval' => 30, // minutes
+        'enabled' => true
+    ],
+    'proxy_scraper_validator' => [
+        'interval' => 360, // minutes (6 hours)
+        'enabled' => true
+    ]
+];
+```
+
+### Troubleshooting Cron Jobs
+
+If the cron jobs are not running:
+
+1. **Check cron service status**
+
+   ```bash
+   systemctl status cron
+   ```
+
+2. **Verify file permissions**
+
+   ```bash
+   chmod 755 /path/to/your/backlinks_manager/jobs/cron_manager.php
+   chmod 755 /path/to/your/backlinks_manager/jobs/BacklinkVerifier.php
+   chmod 755 /path/to/your/backlinks_manager/jobs/ProxyScraperValidator.php
+   ```
+
+3. **Check PHP CLI installation**
+
+   ```bash
+   php -v
+   ```
+
+4. **Review cron logs**
+   ```bash
+   grep CRON /var/log/syslog
+   ```
 
 ## Security Considerations
 
