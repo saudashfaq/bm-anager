@@ -1,6 +1,6 @@
 # Backlinks Manager - Professional Backlink Management Solution
 
-![Backlinks Manager Banner](docs/images/banner.png)
+![Backlinks Manager Banner]
 
 ## 🚀 Overview
 
